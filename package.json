@@ -1,0 +1,26 @@
+{
+  "name": "galaxy-panel",
+  "version": "1.0.0",
+  "description": "Galaxy - multi-tier license reseller control panel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "db:seed": "node db/seed.js",
+    "db:demo": "node db/seed.js --demo",
+    "db:reset": "node db/reset.js",
+    "check": "node scripts/check_demo.js && node scripts/check_keypay.js && node scripts/check_money.js && node scripts/check_pages.js && node scripts/check_directlogin.js",
+    "vendor": "node scripts/vendor.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "ejs": "^3.1.10",
+    "express": "^4.22.3",
+    "express-session": "^1.19.0",
+    "multer": "^1.4.4"
+  },
+  "private": true
+}

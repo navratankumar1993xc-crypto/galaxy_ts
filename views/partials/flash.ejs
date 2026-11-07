@@ -1,0 +1,9 @@
+<% if (flash && flash.length) { %>
+  <% flash.forEach(function (f) { %>
+    <div class="alert alert-<%= f.type %> alert-dismissible">
+      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+      <i class="icon fas fa-<%= f.type === 'success' ? 'check' : (f.type === 'danger' ? 'exclamation-triangle' : 'info') %>"></i>
+      <%= f.text %>
+    </div>
+  <% }) %>
+<% } %>

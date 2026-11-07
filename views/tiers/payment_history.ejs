@@ -1,0 +1,257 @@
+<%- include('../partials/head') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+
+<div class="content-wrapper">
+  <%- include('../partials/pagehead') %>
+
+  <section class="content">
+    <div class="container-fluid">
+      <%- include('../partials/flash') %>
+
+      <% if (parent) { %>
+        <!-- ===== PAY UP CARD (a tier settles its own due with its parent) ===== -->
+        <div class="dash-card mb-3">
+          <div class="dash-card-head d-flex align-items-center">
+            <div class="dash-ico mr-2"><i class="fas fa-money-bill-transfer"></i></div>
+            <div>
+              <div class="dash-title"><%= boldText('Send Payment') %></div>
+              <div class="dash-sub"><%= boldText('Pay your due to ' + parent.username) %></div>
+            </div>
+          </div>
+          <div class="dash-card-body">
+            <form action="/send_payment" method="post" onsubmit="return confirm('Kya aap <%= inr(me.due) %> payment bhejna chahte hain?')">
+              <div class="row align-items-end">
+                <div class="col-md-4 mb-3 mb-md-0">
+                  <label style="font-weight:900; color: var(--ink); font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">
+                    <i class="fas fa-user-tie mr-1" style="color:#2e7d32;"></i> <%= boldText('Parent Panel') %>
+                  </label>
+                  <input type="text" class="form-control" value="<%= parent.username %> (<%= roleName %>)" readonly
+                         style="height: 52px; border-radius: 12px; border: 2px solid var(--line); font-weight: 700;">
+                </div>
+                <div class="col-md-4 mb-3 mb-md-0">
+                  <label style="font-weight:900; color: var(--ink); font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">
+                    <i class="fas fa-wallet mr-1" style="color:#1abc9c;"></i> <%= boldText('Amount (Rs)') %>
+                  </label>
+                  <input type="number" name="amount" value="<%= me.due %>" min="1" step="1" required
+                         style="height: 52px; border-radius: 12px; border: 2px solid var(--danger); font-size: 20px; font-weight: 900; color: var(--danger); background-color: rgba(239, 68, 68, 0.1) !important;">
+                </div>
+                <div class="col-md-4">
+                  <button type="submit" class="btn w-100" style="height: 52px; background: linear-gradient(135deg, #00c6ff, #0072ff); color: #fff; border-radius: 12px; border: none; font-weight: 900; font-size: 15px; box-shadow: 0 8px 20px rgba(0, 198, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
+                    <i class="fas fa-paper-plane mr-1"></i> <%= boldText('Send Payment') %>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- ===== ACCEPT PAYMENT CARD ===== -->
+      <div class="dash-card">
+        <div class="dash-card-head d-flex align-items-center">
+          <div class="dash-ico mr-2"><i class="fas fa-hand-holding-usd"></i></div>
+          <div>
+            <div class="dash-title"><%= boldText('Accept Payment') %></div>
+            <div class="dash-sub"><%= boldText('Apne downline se direct payment accept karein') %></div>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <!-- Carried over from the reference, including the display:none: the
+               row buttons below do the same job and are what is actually shown. -->
+          <form action="/accept_payment" method="post" onsubmit="return confirm('Kya aap ye payment accept karna chahte hain?')" style="display: none; background: var(--card); padding: 25px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 30px; border: 1px solid var(--line); color: var(--ink);">
+            <div class="row align-items-end">
+              <div class="col-md-5">
+                <div class="form-group mb-0">
+                  <label style="font-weight:900; color: var(--ink); margin-bottom: 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">
+                    <i class="fas fa-user-circle mr-1" style="color:#2e7d32; font-size: 16px;"></i> <%= boldText('Select Downline User') %>
+                  </label>
+                  <select name="sender_id" class="form-control" required id="senderSelect" onchange="updateDue(this)" style="height: 52px; border-radius: 12px; border: 2px solid var(--line); font-weight: 700; font-size: 15px; color: var(--ink); background-color: var(--bg); cursor: pointer; transition: all 0.3s ease;">
+                    <option value="">-- <%= boldText('Choose User') %> --</option>
+                    <% payers.forEach(function (u) { %>
+                      <option value="<%= u.id %>" data-due="<%= u.due %>" data-role="<%= ROLES[u.role].label %>">
+                        <%= u.username %>                      (<%= ROLES[u.role].label %>)
+                        &mdash; Due: <%= inr(u.due) %>                    </option>
+                    <% }) %>
+                  </select>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-group mb-0">
+                  <label style="font-weight:900; color: var(--ink); margin-bottom: 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">
+                    <i class="fas fa-wallet mr-1" style="color:#1abc9c; font-size: 16px;"></i> <%= boldText('Due Amount') %> (&#8377;)
+                  </label>
+                  <input type="number" name="amount" id="amountField" class="form-control"
+                         placeholder="<%= boldText('Select user first') %>" min="1" step="1" required readonly
+                         style="height: 52px; border-radius: 12px; border: 2px solid var(--danger); font-size: 20px; font-weight: 900; color: var(--danger); background-color: rgba(239, 68, 68, 0.1) !important; transition: all 0.3s ease;">
+                </div>
+              </div>
+              <div class="col-md-3">
+                <button type="submit" class="btn w-100" style="height: 52px; background: linear-gradient(135deg, #00c6ff, #0072ff); color: #fff; border-radius: 12px; border: none; font-weight: 900; font-size: 15px; box-shadow: 0 8px 20px rgba(0, 198, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; transition: transform 0.2s ease, box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 12px 25px rgba(0, 198, 255, 0.6)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 20px rgba(0, 198, 255, 0.4)';">
+                  <i class="fas fa-check-circle mr-1"></i> <%= boldText('Accept') %>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Downline Due Table -->
+          <div class="table-responsive" style="border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 1px solid var(--line);">
+            <table class="table mb-0" style="background: var(--card); margin-bottom: 0;">
+              <thead style="background: var(--bg2); color: var(--ink);">
+                <tr>
+                  <th style="font-weight: 800; font-size: 13px; padding: 18px 20px; border: none;">Username</th>
+                  <th style="font-weight: 800; font-size: 13px; padding: 18px 20px; border: none;">Role</th>
+                  <th style="font-weight: 800; font-size: 13px; padding: 18px 20px; border: none;">Due Amount</th>
+                  <th style="font-weight: 800; font-size: 13px; padding: 18px 20px; border: none; text-align: right;">Quick Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% board.forEach(function (row) { %>
+                  <tr style="transition: background 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.04)';" onmouseout="this.style.background='transparent';">
+                    <td style="padding: 16px 20px; vertical-align: middle; border-bottom: 1px solid var(--line);">
+                      <b style="font-size: 15px; color: var(--ink);"><%= row.username %></b>
+                    </td>
+                    <td style="padding: 16px 20px; vertical-align: middle; border-bottom: 1px solid var(--line); color: var(--muted); font-weight: 700; font-size: 14px;">
+                      <%= ROLES[row.role].label %>                    </td>
+                    <td style="padding: 16px 20px; vertical-align: middle; border-bottom: 1px solid var(--line);">
+                      <% if (row.due > 0) { %>
+                        <!-- Red variant of the reference pill: its own table had
+                             no owing row to copy, so only the colour differs. -->
+                        <span style="display: inline-block; padding: 6px 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 8px; font-weight: 900; letter-spacing: 0.5px; font-size: 13px;"><i class="fas fa-triangle-exclamation"></i> <%= inr(row.due) %></span>
+                      <% } else { %>
+                        <span style="display: inline-block; padding: 6px 12px; background: rgba(46, 204, 113, 0.1); color: #2ecc71; border-radius: 8px; font-weight: 900; letter-spacing: 0.5px; font-size: 13px;"><i class="fas fa-check-circle"></i> <%= boldText('Clear') %></span>
+                      <% } %>
+                    </td>
+                    <td style="padding: 16px 20px; vertical-align: middle; border-bottom: 1px solid var(--line); text-align: right;">
+                      <% if (row.due > 0) { %>
+                        <!-- Accept settles the whole due in one go; 1-Click Accept
+                             settles every pending transfer the user submitted. -->
+                        <form action="/accept_payment" method="post" style="display:inline" onsubmit="return confirm('Kya aap ye payment accept karna chahte hain?')">
+                          <input type="hidden" name="sender_id" value="<%= row.id %>">
+                          <input type="hidden" name="amount" value="<%= row.due %>">
+                          <button type="submit" class="btn btn-sm" style="background: linear-gradient(135deg, #00c6ff, #0072ff); color:#fff; border:0; font-weight:800; border-radius:6px;">
+                            <i class="fas fa-check-circle mr-1"></i> <%= boldText('Accept') %>
+                          </button>
+                        </form>
+                        <% if (row.pending > 0) { %>
+                          <form action="/accept_payment" method="post" style="display:inline" onsubmit="return confirm('Saare pending payments accept kar dein?')">
+                            <input type="hidden" name="sender_id" value="<%= row.id %>">
+                            <input type="hidden" name="all" value="1">
+                            <button type="submit" class="btn btn-sm" style="background: linear-gradient(135deg, #10b981, #059669); color:#fff; border:0; font-weight:800; border-radius:6px;">
+                              <i class="fas fa-bolt mr-1"></i> <%= boldText('1-Click Accept') %>
+                            </button>
+                          </form>
+                        <% } %>
+                      <% } else { %>
+                        <span style="color: var(--muted); font-weight: 700; font-size: 13px;"><i class="fas fa-minus"></i> <%= boldText('No Due') %></span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }) %>
+                <% if (!board.length) { %>
+                  <tr><td colspan="4" class="text-center text-muted" style="padding: 24px;"><%= boldText('No downline panels yet.') %></td></tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PAYMENT HISTORY TABLE ===== -->
+      <div class="dash-card mt-3">
+        <div class="dash-card-head d-flex align-items-center">
+          <div class="dash-ico mr-2"><i class="fas fa-history"></i></div>
+          <div>
+            <div class="dash-title"><%= boldText('Payment History') %></div>
+            <div class="dash-sub"><%= boldText('Send / Received transactions') %></div>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <div class="table-responsive">
+            <table id="example1" class="table table-bordered table-striped">
+              <thead>
+                <tr>
+                  <th>Paid By (Sender)</th>
+                  <th>Accepted By (Receiver)</th>
+                  <th>Amount</th>
+                  <th>Send Date</th>
+                  <th>Received Date</th>
+                  <th>Key</th>
+                  <th>Status</th>
+                  <th>Receipt</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.forEach(function (p) { %>
+                  <tr>
+                    <td><%= p.sender %></td>
+                    <td><%= p.receiver %></td>
+                    <td><b><%= inr(p.amount) %></b></td>
+                    <td><%= String(p.send_date).slice(0, 10) %></td>
+                    <td><%= p.received_date ? String(p.received_date).slice(0, 10) : '' %></td>
+                    <td>
+                      <% if (p.key_name) { %>
+                        <%= p.key_name %>
+                        <% if (p.is_renew) { %><span class="badge badge-info"><%= boldText('Renew') %></span><% } %>
+                      <% } else { %>
+                        <span class="text-muted">&mdash;</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% /* Two kinds of row share this ledger. A key bill reads Due
+                             while the panel above has not taken the money, and Paid
+                             once it has — so the same page shows what is owed and
+                             what has been received. */ %>
+                      <% if (p.kind === 'due') { %>
+                        <% if (p.status === 'Success') { %>
+                          <span class="badge badge-success"><%= boldText('Paid') %> &#9989;</span>
+                        <% } else { %>
+                          <span class="badge badge-warning"><%= boldText('Due') %></span>
+                        <% } %>
+                      <% } else if (p.status === 'Success') { %>
+                        <span class="badge badge-success"><%= boldText('Done') %> &#9989;</span>
+                      <% } else if (p.status === 'Pending') { %>
+                        <span class="badge badge-warning"><%= boldText('Pending') %></span>
+                      <% } else { %>
+                        <span class="badge badge-danger"><%= boldText('Rejected') %></span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% /* The same receipt opens from the sender's and the
+                             receiver's login — both parties see this row. */ %>
+                      <a href="/receipt?id=<%= p.id %>" target="_blank" rel="noopener"
+                         class="btn btn-sm btn-info" title="Payment Receipt #<%= p.id %>">
+                        <i class="fas fa-receipt mr-1"></i> <%= boldText('Receipt') %>
+                      </a>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+function updateDue(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  const due = opt.getAttribute('data-due') || 0;
+  const role = opt.getAttribute('data-role') || '';
+  const info = document.getElementById('dueInfo');
+  const amtField = document.getElementById('amountField');
+  if (due > 0) {
+    info.innerHTML = '\u26A0\uFE0F <%= boldText('Due') %>: <b style="color:var(--danger);">\u20B9' + parseInt(due).toLocaleString('en-IN') + '</b>';
+    amtField.value = due;
+    amtField.max = due;
+  } else {
+    info.innerHTML = '<span style="color:#10b981;">\u2705 <%= boldText('No Due') %></span>';
+    amtField.value = '';
+    amtField.removeAttribute('max');
+  }
+}
+</script>
+
+<%- include('../partials/foot', { tables: true }) %>

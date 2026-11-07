@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= brand.login.title %></title>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/plugins/fontawesome-free/css/all.min.css">
+  <!-- Login page stylesheet (cache-busted so a new look never stays cached) -->
+  <link rel="stylesheet" href="/css/login.css?v=<%= typeof loginCssV !== 'undefined' ? loginCssV : 0 %>">
+</head>
+<body>
+
+<!-- Galaxy backdrop: drifting stars, nebula glow and a passing comet -->
+<div class="space-bg" aria-hidden="true">
+  <div class="stars stars-far"></div>
+  <div class="stars stars-near"></div>
+  <div class="nebula nebula-violet"></div>
+  <div class="nebula nebula-cyan"></div>
+  <div class="comet"></div>
+</div>
+
+<div class="login-container">
+  <div class="login-card">
+
+    <!-- Header Logo & Title -->
+    <div class="brand-header">
+      <div class="brand-logo">
+        <img src="<%= brand.logo %>" alt="<%= brand.nameBold %> Logo" class="brand-wordmark">
+      </div>
+      <p class="brand-subtitle"><%= brand.login.subtitle %></p>
+    </div>
+
+    <!-- Quick News Banner -->
+
+    <!-- In-page Animated Error (session flash message) -->
+    <div class="error-banner<%= loginError ? ' show' : '' %>" id="errorBanner">
+      <i class="fas fa-exclamation-circle"></i>
+      <span id="errorText"><%= loginError %></span>
+    </div>
+
+    <!-- Sign In Form -->
+    <form action="/login" method="post" autocomplete="off" id="loginForm">
+
+      <!-- Username Input -->
+      <div class="form-group">
+        <label class="form-label"><%= brand.login.username %></label>
+        <div class="input-wrapper">
+          <i class="fas fa-user input-icon"></i>
+          <input type="text" name="username" class="form-input form-input-user" placeholder="<%= brand.login.userPlaceholder %>" required id="usernameInput" value="<%= oldUsername %>">
+        </div>
+      </div>
+
+      <!-- Password Input -->
+      <div class="form-group">
+        <label class="form-label"><%= brand.login.password %></label>
+        <div class="input-wrapper">
+          <i class="fas fa-lock input-icon"></i>
+          <input type="password" name="password" class="form-input form-input-pass" placeholder="<%= brand.login.passPlaceholder %>" required id="passwordInput">
+          <button type="button" class="eye-btn" id="eyeBtn" onclick="togglePassword()">
+            <i class="fas fa-eye" id="eyeIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sign In Submit -->
+      <button type="submit" class="btn-submit" id="submitBtn">
+        <i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i>
+        <%= brand.login.signIn %>
+      </button>
+
+    </form>
+
+    <!-- Generate Demo Button -->
+    <% if (allowDemo) { %>
+    <button type="button" class="btn-demo" id="openDemoModal">
+      <i class="fas fa-key"></i> <%= brand.login.demo(demoDays) %>
+    </button>
+    <% } %>
+
+    <!-- Resources Section: links come from the controller's Link Management -->
+    <div class="divider"><span><%= brand.login.resources %></span></div>
+    <div class="resource-box">
+      <a href="<%= links.setup %>" class="resource-btn btn-setup" target="_blank">
+        <i class="fas fa-cogs"></i> <%= brand.login.setupNew %>
+      </a>
+      <a href="<%= links.updater %>" class="resource-btn btn-updater" target="_blank">
+        <i class="fas fa-sync-alt"></i> <%= brand.login.downloadUpdater %>
+      </a>
+      <a href="<%= links.apk %>" class="resource-btn btn-apk" target="_blank">
+        <i class="fas fa-mobile-alt"></i> <%= brand.login.latestApk %>
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-badge"><%= brand.login.footerBadge %></div>
+
+  </div>
+</div>
+
+<!-- Demo Key Modal: one click on the button above is the whole process. -->
+<div class="modal-overlay" id="demoModal">
+  <div class="modal-box">
+    <button class="modal-close" id="closeModal">&#10005;</button>
+    <div class="modal-title">
+      <i class="fas fa-key" style="color: var(--glow-gold);"></i>
+      <span><%= brand.login.demo(demoDays) %></span>
+    </div>
+
+    <!-- Nothing to fill in here: the length is the controller's decision (the
+         days box on their sidebar, stored as `demo_days`) and the key always
+         has the same name, so the visitor only has to type it. -->
+    <div class="modal-wait" id="modalWait">
+      <i class="fas fa-circle-notch fa-spin"></i> <%= brand.login.fetching %>
+    </div>
+
+    <div class="modal-result" id="modalResult">
+      <div style="font-size: 11px; color: var(--text-muted); font-weight: 800; margin-bottom: 8px; text-transform: uppercase;"><%= brand.login.yourKey %></div>
+      <div class="key-display">
+        <input type="text" id="demoKeyBox" readonly>
+        <button class="copy-btn" id="copyBtn"><%= brand.login.copy %></button>
+      </div>
+      <div style="margin-top: 10px; font-size: 12px; color: var(--glow-gold); font-weight: 700;" id="demoExpiry"></div>
+    </div>
+
+    <div style="margin-top: 12px; color: #ff80ab; font-size: 13px; font-weight: 600;" id="modalError"></div>
+  </div>
+</div>
+
+<script>
+// URL clean karo - koi bhi ?err= ya query string URL mein nahi dikhega
+if (window.location.search) {
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
+// Password eye hide/show toggle
+function togglePassword() {
+  const input = document.getElementById('passwordInput');
+  const icon = document.getElementById('eyeIcon');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.className = 'fas fa-eye-slash';
+  } else {
+    input.type = 'password';
+    icon.className = 'fas fa-eye';
+  }
+}
+
+// Form Submission Spin Effect
+document.getElementById('loginForm').addEventListener('submit', function () {
+  const btn = document.getElementById('submitBtn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i> <%= brand.login.accessing %>';
+  btn.disabled = true;
+});
+
+// Modal Logic — the demo button both opens the card and asks for the key, so
+// one click is the whole thing.
+const modal = document.getElementById('demoModal');
+const openModalBtn = document.getElementById('openDemoModal');
+const closeModalBtn = document.getElementById('closeModal');
+
+const waitBox = document.getElementById('modalWait');
+const resultBox = document.getElementById('modalResult');
+const errorBox = document.getElementById('modalError');
+
+if (closeModalBtn) {
+  closeModalBtn.onclick = () => modal.classList.remove('open');
+  modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('open'); };
+}
+
+async function fetchDemoKey() {
+  waitBox.style.display = 'block';
+  resultBox.style.display = 'none';
+  errorBox.textContent = '';
+  try {
+    const response = await fetch('/create_demo_key', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: new URLSearchParams({ client_name: 'demo_user' })
+    });
+    const data = await response.json();
+    waitBox.style.display = 'none';
+    if (!data.ok) {
+      errorBox.textContent = data.msg || 'Unable to generate demo key.';
+      return;
+    }
+    resultBox.style.display = 'block';
+    document.getElementById('demoKeyBox').value = data.key;
+    document.getElementById('demoExpiry').textContent = '<%= brand.login.expiry %>' + data.expiry;
+  } catch (err) {
+    waitBox.style.display = 'none';
+    errorBox.textContent = 'Network connection failed. Try again.';
+  }
+}
+
+if (openModalBtn) {
+  openModalBtn.onclick = () => {
+    modal.classList.add('open');
+    fetchDemoKey();
+  };
+}
+
+// Clipboard Copy Logic
+const copyBtn = document.getElementById('copyBtn');
+if (copyBtn) {
+  copyBtn.onclick = async function () {
+    const key = document.getElementById('demoKeyBox').value;
+    await navigator.clipboard.writeText(key);
+    this.textContent = '<%= brand.login.copied %>';
+    setTimeout(() => this.textContent = '<%= brand.login.copy %>', 1500);
+  };
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,83 @@
+<%- include('../partials/head') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+
+<div class="content-wrapper">
+  <%- include('../partials/pagehead') %>
+
+  <section class="content">
+    <div class="container-fluid">
+      <%- include('../partials/flash') %>
+
+      <div class="dash-card">
+        <div class="dash-card-head d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <div class="dash-ico mr-2"><i class="fas fa-exchange-alt"></i></div>
+            <div>
+              <div class="dash-title"><%= boldText('All Transaction') %></div>
+              <div class="dash-sub"><%= boldText('Payment history') %></div>
+            </div>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <div class="table-responsive">
+            <table id="example1" class="table table-bordered table-striped">
+              <thead>
+                <tr>
+                  <th>Sender</th>
+                  <th>Receiver</th>
+                  <th>Amount</th>
+                  <th>Send Date</th>
+                  <th>Received Date</th>
+                  <th>Key</th>
+                  <th>Status</th>
+                  <th>Receipt</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.forEach(function (p) { %>
+                  <tr>
+                    <td><%= p.sender %></td>
+                    <td><%= p.receiver %></td>
+                    <td><%= Number(p.amount).toFixed(2) %></td>
+                    <td><%= String(p.send_date).slice(0, 10) %></td>
+                    <td><%= p.received_date ? String(p.received_date).slice(0, 10) : '' %></td>
+                    <td>
+                      <% if (p.key_name) { %>
+                        <%= p.key_name %>
+                        <% if (p.is_renew) { %><span class="badge badge-info"><%= boldText('Renew') %></span><% } %>
+                      <% } else { %>
+                        <span class="text-muted">&mdash;</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% /* Key bills carry their own word: Due until the parent takes
+                             the money, Paid afterwards. Transfers keep their status. */ %>
+                      <% if (p.kind === 'due') { %>
+                        <span class="badge badge-<%= p.status === 'Success' ? 'success' : 'warning' %>">
+                          <%= boldText(p.status === 'Success' ? 'Paid' : 'Due') %>
+                        </span>
+                      <% } else { %>
+                        <span class="badge badge-<%= p.status === 'Success' ? 'success' : (p.status === 'Pending' ? 'warning' : 'danger') %>">
+                          <%= boldText(p.status) %>
+                        </span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <a href="/receipt?id=<%= p.id %>" target="_blank" rel="noopener"
+                         class="btn btn-sm btn-info" title="Payment Receipt #<%= p.id %>">
+                        <i class="fas fa-receipt mr-1"></i> <%= boldText('Receipt') %>
+                      </a>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<%- include('../partials/foot', { tables: true }) %>

@@ -1,0 +1,189 @@
+<%- include('../partials/head') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+
+<div class="content-wrapper">
+  <%- include('../partials/pagehead') %>
+
+  <section class="content">
+    <%- include('../partials/flash') %>
+    <div class="container-fluid">
+
+      <div class="dash-card">
+        <div class="dash-card-head<%= headKind === 'title' ? '' : ' d-flex align-items-center justify-content-between' %>">
+          <% if (headKind === 'title') { %>
+            <div class="dash-card-title">
+              <i class="fas fa-users mr-2" style="opacity:.85;"></i>
+              <%= heading %>
+            </div>
+          <% } else if (headKind === 'h3back') { %>
+            <div class="d-flex align-items-center justify-content-between w-100">
+              <div>
+                <h3 class="dash-card-title mb-0"><%= heading %></h3>
+                <div class="dash-card-sub"><%= boldText('Manage accounts and reset passwords') %></div>
+              </div>
+              <a href="/home" class="btn btn-pro">
+                <i class="fas fa-arrow-left mr-1"></i> <%= boldText('Back') %>
+              </a>
+            </div>
+          <% } else if (headKind === 'h3') { %>
+            <div>
+              <h3 class="dash-card-title mb-0"><%= heading %></h3>
+            </div>
+          <% } else { %>
+            <div class="d-flex align-items-center">
+              <div class="dash-ico mr-2"><i class="fas fa-users"></i></div>
+              <div>
+                <div class="dash-title"><%= heading %></div>
+                <div class="dash-sub"><%= boldText('Manage users') %></div>
+              </div>
+            </div>
+          <% } %>
+        </div>
+
+        <div class="dash-card-body">
+          <div class="table-responsive<%= headKind === 'title' ? ' p-0' : '' %>">
+            <table id="example1" class="table table-bordered table-striped">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <% if (showDirectLogin) { %><th><%= boldText('Direct Login') %></th><% } %>
+                  <th>Reset Password</th>
+                  <th>Status</th>
+                  <th>Dues</th>
+                  <th>Role</th>
+                  <th>Created By</th>
+                  <% if (showDelete) { %><th>Delete</th><% } %>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.forEach(function (u) { %>
+                  <tr>
+                    <td><%= u.username %></td>
+                    <% if (showDirectLogin) { %>
+                      <td>
+                        <% /* One click enters this panel's dashboard as that user,
+                               no password asked. The controller's own row has no
+                               target to enter, so it prints a dash instead. */ %>
+                        <% if (u.role !== 'controller') { %>
+                          <form action="/direct_login" method="post" style="display: inline-block;">
+                            <input type="hidden" name="user_id" value="<%= u.id %>">
+                            <button type="submit" class="btn btn-pro" title="Enter <%= u.username %>'s panel without a password">
+                              <i class="fas fa-right-to-bracket mr-1"></i> <%= boldText('Direct Login') %>
+                            </button>
+                          </form>
+                        <% } else { %>
+                          <span class="text-muted">—</span>
+                        <% } %>
+                      </td>
+                    <% } %>
+                    <td>
+                      <% /* The controller changes its own password from the
+                             top-right user dropdown, not from this table. Every
+                             panel below it keeps the reset button (the parent
+                             resets a child's password). */ %>
+                      <% if (u.role !== 'controller') { %>
+                        <button type="button" class="btn btn-pro"
+                                data-toggle="modal" data-target="#modal-reset-<%= u.id %>">
+                          <%= boldText('Change Password') %>
+                        </button>
+                      <% } else { %>
+                        <span class="text-muted">—</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <%- include('../partials/status_cell', { user: u }) %>
+                    </td>
+                    <td>
+                      <% /* Final Rule: the controller owes nothing — no Due is
+                             ever created on it, so its row always reads 0. */ %>
+                      <%= u.role === 'controller' ? 0 : u.due %>
+                    </td>
+                    <td><%= u.role %></td>
+                    <td><%= u.createdByLabel %></td>
+                    <% if (showDelete) { %>
+                      <td>
+                        <% /* The controller may delete any account below it, but
+                               never its own row — that prints a dash instead. */ %>
+                        <% if (u.role !== 'controller') { %>
+                          <button type="button" class="btn btn-danger"
+                                  data-toggle="modal" data-target="#delete-modal-<%= u.id %>">
+                            <%= boldText('Delete') %>
+                          </button>
+                        <% } else { %>
+                          <span class="text-muted">—</span>
+                        <% } %>
+                      </td>
+                    <% } %>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reset password modals, one per row like the reference markup. The
+           controller's own row has no button here (its password change lives in
+           the top-right dropdown), so it gets no modal either. -->
+      <% rows.filter(function (u) { return u.role !== 'controller'; }).forEach(function (u) { %>
+        <div class="modal fade" id="modal-reset-<%= u.id %>" tabindex="-1" role="dialog" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h4 class="modal-title"><%= boldText('Reset Password') %></h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+
+              <form action="/status_update" method="post">
+                <div class="modal-body">
+                  <input type="text" name="password" class="form-control" placeholder="<%= boldText('Enter New Password') %>" required>
+                  <input type="hidden" name="id" value="<%= u.id %>">
+                </div>
+
+                <div class="modal-footer justify-content-between">
+                  <button type="button" class="btn btn-default" data-dismiss="modal"><%= boldText('Close') %></button>
+                  <button type="submit" class="btn btn-warning"><%= boldText('Reset') %></button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      <% }) %>
+
+      <!-- Confirm delete modals (direct children only) -->
+      <% if (showDelete) { rows.filter(function (u) { return u.role !== 'controller'; }).forEach(function (u) { %>
+        <div class="modal fade" id="delete-modal-<%= u.id %>" tabindex="-1" role="dialog" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h4 class="modal-title"><%= boldText('Confirm Delete') %></h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+
+              <form action="/delete_user_cascade" method="post">
+                <div class="modal-body">
+                  <p><b><%= boldText('Warning') %>:</b> Is user ko delete karne se iske neeche ke saare users aur related keys (details) bhi delete ho jayengi.</p>
+                  <p><%= boldText('Delete user') %>: <b><%= u.username %></b> (ID: <%= u.id %>)</p>
+                  <input type="hidden" name="root_id" value="<%= u.id %>">
+                </div>
+
+                <div class="modal-footer justify-content-between">
+                  <button type="button" class="btn btn-default" data-dismiss="modal"><%= boldText('Cancel') %></button>
+                  <button type="submit" class="btn btn-danger"><%= boldText('Yes, Delete') %></button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      <% }) } %>
+
+    </div>
+  </section>
+</div>
+
+<%- include('../partials/foot', { tables: true }) %>

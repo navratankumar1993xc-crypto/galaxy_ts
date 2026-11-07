@@ -1,0 +1,69 @@
+<%- include('../partials/head') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+
+<div class="content-wrapper">
+  <%- include('../partials/pagehead') %>
+
+  <section class="content">
+    <div class="container-fluid">
+      <%- include('../partials/flash') %>
+
+      <div class="dash-card">
+        <div class="dash-card-head d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #f97316, #c2410c) !important; color: #fff !important; border-bottom: 0 !important; border-radius: 14px 14px 0 0 !important; padding: 18px 20px !important;">
+          <div class="d-flex align-items-center">
+            <div class="dash-ico mr-2" style="color: #fff !important;"><i class="fas fa-right-left" style="color: #fff !important;"></i></div>
+            <div>
+              <div class="dash-title" style="color: #fff !important;"><%= boldText('Transfer History') %></div>
+              <div class="dash-sub" style="color: rgba(255,255,255,0.85) !important;"><%= boldText('Every key transfer, with the whole account that moved') %></div>
+            </div>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <p class="text-muted" style="font-size: 13px; line-height: 1.6;">
+            <%= boldText('Controller login only.') %> Each row records a key moving from one panel to another together with its payment/due records, pending due, reset history and validity trail. The old panel loses the key and all its records; nothing is duplicated.
+          </p>
+          <div class="table-responsive">
+            <table id="example1" class="table table-bordered table-striped">
+              <thead>
+                <tr>
+                  <th><%= boldText('Date') %></th>
+                  <th><%= boldText('Key') %></th>
+                  <th><%= boldText('From Panel') %></th>
+                  <th><%= boldText('To Panel') %></th>
+                  <th><%= boldText('By') %></th>
+                  <th><%= boldText('Bills Moved') %></th>
+                  <th><%= boldText('Pending Due Moved') %></th>
+                  <th><%= boldText('Resets') %></th>
+                  <th><%= boldText('Validity Entries') %></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (!rows.length) { %>
+                  <tr>
+                    <td colspan="9" class="text-center text-muted"><%= boldText('No transfers yet.') %></td>
+                  </tr>
+                <% } %>
+                <% rows.forEach(function (t) { %>
+                  <tr>
+                    <td><%= t.transfer_date %></td>
+                    <td class="font-weight-bold"><%= t.key_name %></td>
+                    <td><%= t.from_name %></td>
+                    <td class="font-weight-bold"><%= t.to_name %></td>
+                    <td><%= t.username %></td>
+                    <td><%= t.bills_moved %></td>
+                    <td><%= inr(t.pending_moved) %></td>
+                    <td><%= t.resets_carried %></td>
+                    <td><%= t.validity_carried %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<%- include('../partials/foot', { tables: true }) %>

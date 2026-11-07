@@ -1,0 +1,24 @@
+<%
+  // Every page in the reference build shares this strip: the tier name plus
+  // today's ticket count. Page-specific headings live in the card below it.
+%>
+<section class="content-header">
+  <div class="container-fluid">
+    <div class="card pro-card mb-3">
+      <div class="card-body py-3">
+        <div class="row align-items-center">
+          <div class="col-sm-6 mb-2 mb-sm-0">
+            <h1 class="m-0" style="font-size:1.35rem;">
+              <%= panelTitle %>
+            </h1>
+          </div>
+          <div class="col-sm-6 text-sm-right">
+            <span class="badge badge-info py-2 px-3" style="font-size: 0.95rem; font-weight: 800; background: linear-gradient(135deg, #3b82f6, #2563eb) !important; border-radius: 8px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); color: #fff !important; border: none !important;">
+              <%- resultChip %>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,150 @@
+<%- include('../partials/head') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+
+<div class="content-wrapper">
+  <%- include('../partials/pagehead') %>
+
+  <section class="content">
+    <div class="container-fluid">
+      <%- include('../partials/flash') %>
+
+      <!-- ── Stat Cards ─────────────────────────────── -->
+      <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+          <div class="stat-card card-today">
+            <i class="fas fa-calendar-day stat-icon"></i>
+            <div class="stat-num"><%= summary.today %></div>
+            <div class="stat-label">📅 <%= boldText('Aaj Ke Tokens') %></div>
+            <div style="margin-top:10px; font-size:12px; opacity:.8;"><%= todayLabel %></div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3">
+          <div class="stat-card card-hour">
+            <i class="fas fa-clock stat-icon"></i>
+            <div class="stat-num"><%= summary.thisHour %></div>
+            <div class="stat-label">⏰ <%= boldText('Is Ghante Mein') %></div>
+            <div style="margin-top:10px; font-size:12px; opacity:.8;"><%= hourLabel %></div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3">
+          <div class="stat-card card-total">
+            <i class="fas fa-database stat-icon"></i>
+            <div class="stat-num"><%= summary.allTime %></div>
+            <div class="stat-label">📊 <%= boldText('Total Tokens (All Time)') %></div>
+            <div style="margin-top:10px; font-size:12px; opacity:.8;"><%= boldText('Since beginning') %></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Chart + Top Users ──────────────────────── -->
+      <div class="row mb-4">
+        <!-- 7-Din Chart -->
+        <div class="col-md-8 mb-3">
+          <div class="card" style="border-radius:16px; border:1px solid var(--line) !important; background:var(--card) !important;">
+            <div class="card-header" style="border-radius:16px 16px 0 0; background:var(--bg2) !important; border-bottom:1px solid var(--line) !important;">
+              <h5 style="font-weight:900; margin:0; color:var(--ink);">
+                <i class="fas fa-chart-bar" style="color:#6d28d9; margin-right:8px;"></i>
+                <%= boldText('Last 7 Din Ka Token Volume') %>
+              </h5>
+            </div>
+            <div class="card-body">
+              <canvas id="tokenChart" height="100"></canvas>
+            </div>
+          </div>
+        </div>
+        <!-- Top Users Today -->
+        <div class="col-md-4 mb-3">
+          <div class="card" style="border-radius:16px; border:1px solid var(--line) !important; background:var(--card) !important; height:100%;">
+            <div class="card-header" style="border-radius:16px 16px 0 0; background:var(--bg2) !important; border-bottom:1px solid var(--line) !important;">
+              <h5 style="font-weight:900; margin:0; color:var(--ink);">
+                <i class="fas fa-trophy" style="color:#f59e0b; margin-right:8px;"></i>
+                <%= boldText('Top Users') %> &mdash; <%= boldText('Aaj') %>
+              </h5>
+            </div>
+            <div class="card-body p-0">
+              <table class="table mb-0" style="background:var(--card) !important;">
+                <thead>
+                  <tr style="background:var(--bg2) !important;">
+                    <th style="padding:10px 16px; font-size:13px; color:var(--ink); border:none;">#</th>
+                    <th style="padding:10px 16px; font-size:13px; color:var(--ink); border:none;">User ID</th>
+                    <th style="padding:10px 16px; font-size:13px; color:var(--ink); text-align:right; border:none;">Tokens</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% topUsers.forEach(function (u, i) { %>
+                    <tr>
+                      <td style="padding:10px 16px; font-weight:800; color:var(--muted);"><%= i + 1 %></td>
+                      <td style="padding:10px 16px;"><span class="badge-user"><%= u.user %></span></td>
+                      <td style="padding:10px 16px; text-align:right; font-weight:900;"><%= u.tokens %></td>
+                    </tr>
+                  <% }) %>
+                  <% if (!topUsers.length) { %>
+                    <tr style="border-top:1px solid var(--line) !important;"><td colspan="3" class="text-center text-muted py-4" style="border:none;"><%= boldText('Aaj koi token nahi aaya') %></td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Recent 50 Tokens Table ─────────────────── -->
+      <div class="card" style="border-radius:16px; border:1px solid var(--line) !important; background:var(--card) !important;">
+        <div class="card-header d-flex justify-content-between align-items-center" style="border-radius:16px 16px 0 0; background:var(--bg2) !important; border-bottom:1px solid var(--line) !important;">
+          <h5 style="font-weight:900; margin:0; color:var(--ink);">
+            <i class="fas fa-list" style="color:#2e7d32; margin-right:8px;"></i>
+            Recent Tokens (Last 50)
+          </h5>
+          <span style="background:rgba(109,40,217,0.15); color:#a78bfa; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:800;">
+            <%= boldText('Live Data') %>
+          </span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table token-table mb-0" id="tokenTable" style="background:var(--card) !important;">
+              <thead>
+                <tr style="background:var(--bg2) !important;">
+                  <% [
+                    'ID', 'User ID', 'Sensors', 'Status',
+                    'Timestamp', 'Received At'
+                  ].forEach(function (h) { %>
+                    <th style="padding:12px 16px; font-size:13px; color:var(--ink); border:none;"><%= h %></th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% recentRows.forEach(function (t) { %>
+                  <tr>
+                    <td style="font-weight:800; color:var(--muted);"><%= t.id %></td>
+                    <td><span class="badge-user"><%= t.user_label %></span></td>
+                    <td><span class="sensor-pill"><%= t.sensors %></span></td>
+                    <td>
+                      <% if (t.status === 'valid') { %>
+                        <span class="badge badge-success"><%= boldText('Valid') %></span>
+                      <% } else { %>
+                        <span class="badge badge-danger"><%= boldText(t.status) %></span>
+                      <% } %>
+                    </td>
+                    <td><%= t.ts %></td>
+                    <td><%= t.received_at %></td>
+                  </tr>
+                <% }) %>
+                <% if (!recentRows.length) { %>
+                  <tr style="border-top:1px solid var(--line) !important;">
+                    <td colspan="6" class="text-center py-5 text-muted" style="border:none;">
+                      <i class="fas fa-satellite-dish" style="font-size:40px; opacity:.3; display:block; margin-bottom:10px;"></i>
+                      <%= boldText('Abhi koi token nahi aaya') %>
+                    </td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<%- include('../partials/foot') %>

@@ -1,0 +1,141 @@
+<%- include('../partials/head') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+
+<div class="content-wrapper">
+  <%- include('../partials/pagehead') %>
+
+  <section class="content">
+    <div class="container-fluid">
+      <%- include('../partials/flash') %>
+
+      <!-- HEADER / FILTER SECTION -->
+      <div class="dash-card mb-4" style="background: linear-gradient(145deg, #1e1e2f, #2a2a40); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+        <div class="dash-card-body" style="padding: 30px;">
+          <div class="row align-items-center">
+            <div class="col-md-5">
+              <h2 style="color: #fff; font-weight: 900; margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 1px;">
+                <i class="fas fa-chart-pie text-warning mr-2"></i> <%= boldText('Account & Reports') %>
+              </h2>
+              <p style="color: #aaa; margin: 5px 0 0 0; font-size: 14px;">Generate detailed creation reports based on date range</p>
+            </div>
+            <div class="col-md-7">
+              <form method="GET" action="/reports" class="d-flex align-items-end justify-content-end">
+                <div class="form-group mb-0 mr-3">
+                  <label style="color: #00e5ff; font-weight: 700; font-size: 13px; text-transform: uppercase;"><%= boldText('From Date') %></label>
+                  <input type="date" name="from_date" value="<%= fromDate %>" class="form-control" required style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-weight: bold; border-radius: 8px;">
+                </div>
+                <div class="form-group mb-0 mr-3">
+                  <label style="color: #00e5ff; font-weight: 700; font-size: 13px; text-transform: uppercase;"><%= boldText('To Date') %></label>
+                  <input type="date" name="to_date" value="<%= toDate %>" class="form-control" required style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-weight: bold; border-radius: 8px;">
+                </div>
+                <button type="submit" class="btn" style="background: linear-gradient(135deg, #00c6ff, #0072ff); color: #fff; border: none; font-weight: 800; padding: 10px 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0, 198, 255, 0.4);">
+                  <i class="fas fa-search mr-1"></i> <%= boldText('Get Report') %>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI CARDS SECTION -->
+      <div class="row mb-4">
+        <div class="col-md-4">
+          <div style="background: var(--card); border-radius: 16px; padding: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); display: flex; align-items: center; border-left: 5px solid #4caf50; border: 1px solid var(--line);">
+            <div style="width: 60px; height: 60px; border-radius: 12px; background: rgba(76, 175, 80, 0.1); color: #4caf50; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-right: 20px;">
+              <i class="fas fa-key"></i>
+            </div>
+            <div>
+              <div style="color: var(--muted); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;"><%= boldText('Total Keys Created') %></div>
+              <div style="color: var(--ink); font-weight: 900; font-size: 32px; line-height: 1.2;"><%= summary.total %></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div style="background: var(--card); border-radius: 16px; padding: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); display: flex; align-items: center; border-left: 5px solid #2ecc71; border: 1px solid var(--line);">
+            <div style="width: 60px; height: 60px; border-radius: 12px; background: rgba(46, 204, 113, 0.1); color: #2ecc71; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-right: 20px;">
+              <i class="fas fa-wallet"></i>
+            </div>
+            <div>
+              <div style="color: var(--muted); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;"><%= boldText('Paid Keys') %></div>
+              <div style="color: var(--ink); font-weight: 900; font-size: 32px; line-height: 1.2;"><%= summary.paid %></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div style="background: var(--card); border-radius: 16px; padding: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); display: flex; align-items: center; border-left: 5px solid #e74c3c; border: 1px solid var(--line);">
+            <div style="width: 60px; height: 60px; border-radius: 12px; background: rgba(231, 76, 60, 0.1); color: #e74c3c; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-right: 20px;">
+              <i class="fas fa-hand-holding-usd"></i>
+            </div>
+            <div>
+              <div style="color: var(--muted); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;"><%= boldText('Unpaid Keys') %></div>
+              <div style="color: var(--ink); font-weight: 900; font-size: 32px; line-height: 1.2;"><%= summary.unpaid %></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DETAILED TABLE SECTION -->
+      <div class="dash-card" style="border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid var(--line); overflow: hidden;">
+        <div class="dash-card-head d-flex align-items-center" style="padding: 20px 30px; border-bottom: 2px solid var(--line); background: var(--card);">
+          <div class="dash-ico mr-3" style="width: 45px; height: 45px; background: linear-gradient(135deg, #34495e, #2c3e50); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; box-shadow: 0 5px 15px rgba(44, 62, 80, 0.4);">
+            <i class="fas fa-list-alt"></i>
+          </div>
+          <div>
+            <div class="dash-title" style="font-weight: 900; font-size: 18px; color: var(--ink); margin-bottom: 2px;"><%= boldText('Report Breakdown') %></div>
+            <div class="dash-sub" style="font-weight: 600; font-size: 12px; color: var(--muted); text-transform: uppercase;">
+              <%= boldText('Showing data from') %> <b style="color: #3498db;"><%= fromLabel %></b> <%= boldText('to') %> <b style="color: #3498db;"><%= toLabel %></b>
+            </div>
+          </div>
+        </div>
+        <div class="dash-card-body" style="padding: 20px;">
+          <div class="table-responsive" style="border-radius: 12px; overflow: hidden; border: 1px solid var(--line);">
+            <table id="example1" class="table mb-0" style="background: var(--card); margin-bottom: 0;">
+              <thead style="background: var(--bg2); color: var(--ink);">
+                <tr>
+                  <% [
+                    'Key Name', 'Created Date'
+                  ].concat(CHAIN_TIERS.map(function (tier) { return tier.label; }))
+                    .concat(['Type', 'Payment Status'])
+                    .forEach(function (h) { %>
+                    <th style="font-weight: 800; font-size: 13px; border: none; padding: 15px;"><%= h %></th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.forEach(function (k) { %>
+                  <tr>
+                    <td><%= k.key_name %></td>
+                    <td><%= String(k.start_date).slice(0, 10) %></td>
+                    <% CHAIN_TIERS.forEach(function (tier) { %>
+                      <td><%= k[tier.field] %></td>
+                    <% }) %>
+                    <td>
+                      <% if (k.type === 'demo') { %>
+                        <span class="badge badge-info"><%= boldText('Demo') %></span>
+                      <% } else { %>
+                        <span class="badge badge-secondary"><%= boldText('Normal') %></span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (k.has_paid) { %>
+                        <span class="text-success font-weight-bold"><%= boldText('Paid') %></span>
+                      <% } else { %>
+                        <span class="text-danger font-weight-bold"><%= boldText('UnPaid') %></span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }) %>
+                <% if (!rows.length) { %>
+                  <tr><td colspan='<%= 4 + CHAIN_TIERS.length %>' class='text-center' style='padding: 30px; color: var(--muted); font-weight: 700;'><%= boldText('No keys found for the selected date range.') %></td></tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<%- include('../partials/foot', { tables: true }) %>

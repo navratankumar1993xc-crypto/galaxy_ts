@@ -1,0 +1,46 @@
+<%- include('../partials/head') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+
+<div class="content-wrapper">
+  <%- include('../partials/pagehead') %>
+
+  <section class="content">
+    <div class="container-fluid dash-shell">
+      <%- include('../partials/flash') %>
+
+      <!-- ===== KPI ===== -->
+      <div class="kpi-top-row">
+        <% tiles.forEach(function (tile) { %>
+          <a href="/all_key?filter=<%= tile.key %>" style="text-decoration: none; color: inherit;">
+            <div class="kpi-card"
+                 style="cursor: pointer; transition: transform 0.25s ease, box-shadow 0.25s ease; background: linear-gradient(135deg, <%= tile.grad %>) !important; border: 0 !important; color: #fff !important;"
+                 onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 12px 25px rgba(0,0,0,0.3)';"
+                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 18px rgba(0,0,0,0.15)';">
+              <div class="kpi-icon"><i class="<%= tile.icon %>" style="color: #fff !important;"></i></div>
+              <div class="kpi-name" style="color: rgba(255,255,255,0.85) !important; font-weight: 700;"><%= tile.label %></div>
+              <div class="kpi-val" style="color: #fff !important; font-weight: 800; font-size: 28px;"><%= counts[tile.key] %></div>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+
+      <!-- ===== MIDDLE ===== -->
+      <div class="middle-section">
+        <div class="news-card">
+          <div class="card-head">
+            <i class="fas fa-bullhorn"></i> <%= boldText('Important News') %>
+          </div>
+
+          <% if (newsItem) { %>
+            <div class="notice-box"><%= newsItem.body %></div>
+          <% } else { %>
+            <div class="notice-box no-news">No news for now.</div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<%- include('../partials/foot') %>

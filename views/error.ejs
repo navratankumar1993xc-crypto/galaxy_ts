@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= brand.title %></title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <link rel="stylesheet" href="/plugins/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="/dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="/css/theme-pro.css">
+</head>
+<body class="hold-transition">
+  <div class="content-wrapper" style="min-height:100vh;">
+    <section class="content">
+      <div class="container-fluid">
+        <div class="row justify-content-center align-items-center" style="min-height:80vh;">
+          <div class="col-12 col-md-6">
+            <div class="card pro-card">
+              <div class="card-body text-center py-5">
+                <h1 class="display-4 font-weight-bold mb-2"><%= code %></h1>
+                <p class="lead mb-4"><%= message %></p>
+                <a href="<%= me ? '/home' : '/login' %>" class="btn btn-pro">
+                  <i class="fas fa-arrow-left mr-2"></i>
+                  <%= me ? 'Back to Dashboard' : 'Back to Login' %>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
