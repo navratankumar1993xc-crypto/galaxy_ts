@@ -11,13 +11,14 @@ function normType(v) {
   return TYPES.includes(t) ? t : null;
 }
 
-// Accept a key_name (DEMO01) or a numeric keys.id.
+// Accept a key_name (DEMO01) or a numeric keys.id. mac is the device ID
+// registered at license validation; the sensor GET matches against it.
 function findKey(ref) {
   const s = String(ref == null ? '' : ref).trim();
   if (!s) return null;
-  let k = store.get('SELECT id, key_name, status, created_by_id FROM keys WHERE key_name = ?', [s]);
+  let k = store.get('SELECT id, key_name, status, created_by_id, mac FROM keys WHERE key_name = ?', [s]);
   if (!k && /^\d+$/.test(s)) {
-    k = store.get('SELECT id, key_name, status, created_by_id FROM keys WHERE id = ?', [Number(s)]);
+    k = store.get('SELECT id, key_name, status, created_by_id, mac FROM keys WHERE id = ?', [Number(s)]);
   }
   return k || null;
 }
@@ -77,6 +78,46 @@ function apiGet(req, res) {
   res.json({ success: true, message: '', tokens, sensors: tokens, timestamp, userId });
 }
 
+// ------------------------------------------- POST /api/akamai/sensor/:keyname
+// APK pushes sensors against a key. keyname comes from the path; NO mac needed
+// on POST. Body { sensors:[...], timestamp, ... } (legacy tokens also accepted).
+// Same endpoint for app and beta — type selects the pool, defaults to 'app'.
+function sensorPost(req, res) {
+  const key = findKey(req.params.keyname);
+  if (!key) return res.status(404).json({ ok: false, msg: 'Unknown key.' });
+  const body = req.body || {};
+  const type = normType(body.type);
+  if (!type) return res.status(400).json({ ok: false, msg: "type must be 'app' or 'beta'." });
+  const list = tokenList(body).map(t => t.trim()).filter(Boolean);
+  if (!list.length) return res.status(400).json({ ok: false, msg: 'No tokens supplied.' });
+  const added = keyTokens.add(key.id, type, list);
+  res.json({ ok: true, added, key: key.key_name, type });
+}
+
+// -------------------------------------------- GET /api/akamai/sensor/:keyname
+// Software pulls its pending tokens once (then they are marked consumed).
+// mac_address MUST match the key's registered MAC (keys.mac, set at license
+// validation); a mismatch or missing mac is an error. Same endpoint for app and
+// beta — type selects the pool. Response carries the software shape
+// { success, message, tokens } plus the APK fields { sensors, timestamp, userId }.
+function sensorGet(req, res) {
+  const key = findKey(req.params.keyname);
+  const userId = key ? key.key_name : '';
+  const timestamp = Date.now();
+  const fail = (message) => res.json({ success: false, message, tokens: [], sensors: [], timestamp, userId });
+  if (!key) return fail('Unknown key.');
+  if (key.status !== 'active') return fail('Your License is BLOCKED from fetching Tokens.');
+  const mac = String(req.query.mac_address == null ? '' : req.query.mac_address).trim();
+  if (!mac) return fail('mac_address is required.');
+  if (!key.mac) return fail('No MAC address registered for this key.');
+  if (key.mac !== mac) return fail('MAC address does not match this key.');
+  const type = normType(req.query.type) || 'app';
+  const rows = keyTokens.pending(key.id, type);
+  keyTokens.consume(rows.map(r => r.id));
+  const tokens = rows.map(r => r.token);
+  res.json({ success: true, message: '', tokens, sensors: tokens, timestamp, userId });
+}
+
 // ----------------------------------------------------- GET /api/appconfig
 // Token Manager header: block flag + the two APK links the QR codes are built
 // from. Field names match what the client already parses.
@@ -116,4 +157,4 @@ function save(req, res) {
   res.redirect('/key_tokens');
 }
 
-module.exports = { apiPost, apiGet, apiAppConfig, page, save };
+module.exports = { apiPost, apiGet, sensorPost, sensorGet, apiAppConfig, page, save };

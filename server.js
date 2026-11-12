@@ -62,8 +62,13 @@ app.post('/api/token', tokenPages.apiToken);
 app.post('/api/license/validate', license.validate);
 app.post('/api/limits', limits.apiLimits);
 // Per-key token pool: push from anywhere, pull once from the client software.
-app.post('/api/tokens', keyTokens.apiPost);
-app.get('/api/tokens', keyTokens.apiGet);
+// Old wire endpoint — replaced by /api/akamai/sensor/:keyname below.
+// app.post('/api/tokens', keyTokens.apiPost);
+// app.get('/api/tokens', keyTokens.apiGet);
+// APK sensor endpoint: POST by keyname (no mac); GET validates mac_address
+// against the key's registered MAC. Same endpoint serves app and beta (type).
+app.post('/api/akamai/sensor/:keyname', keyTokens.sensorPost);
+app.get('/api/akamai/sensor/:keyname', keyTokens.sensorGet);
 // Token Manager header: block flag + the APK links the QR codes are built from.
 app.get('/api/appconfig', keyTokens.apiAppConfig);
 
