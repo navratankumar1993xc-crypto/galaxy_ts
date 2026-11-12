@@ -23,8 +23,12 @@ function findKey(ref) {
 }
 
 // Split a textarea / array / single string into individual token lines.
+// The APK posts { sensors: [ "<dll line>", ... ] }; the panel posts tokens.
+// Each sensors element is already one full DLL line, so it is stored verbatim.
 function tokenList(body) {
-  let raw = body.tokens != null ? body.tokens : body.token;
+  let raw = body.sensors != null ? body.sensors
+    : body.tokens != null ? body.tokens
+      : body.token;
   if (raw == null) return [];
   if (Array.isArray(raw)) return raw.map(x => String(x));
   return String(raw).split(/\r?\n/);
@@ -32,9 +36,15 @@ function tokenList(body) {
 
 // ------------------------------------------------------- POST /api/tokens
 // Push tokens against a key from anywhere (curl, panel, external tool).
+// Accepts the APK wire shape { sensors:[...], timestamp, userId } as well as
+// the panel shape { key|key_id, type, tokens }. userId maps to the key; type
+// defaults to 'app' when the APK omits it.
 function apiPost(req, res) {
   const body = req.body || {};
-  const key = findKey(body.key != null ? body.key : body.key_id);
+  const keyRef = body.key != null ? body.key
+    : body.key_id != null ? body.key_id
+      : body.userId;
+  const key = findKey(keyRef);
   if (!key) return res.status(404).json({ ok: false, msg: 'Unknown key.' });
   const type = normType(body.type);
   if (!type) return res.status(400).json({ ok: false, msg: "type must be 'app' or 'beta'." });
@@ -46,18 +56,25 @@ function apiPost(req, res) {
 
 // -------------------------------------------------------- GET /api/tokens
 // The client software pulls its pending tokens once; they are marked consumed
-// so a repeat click does not hand out the same token again. Shape matches the
-// software's TeslaTSTokenResponseNew { success, message, tokens[] }.
+// so a repeat click does not hand out the same token again. Response carries
+// both shapes: the software's TeslaTSTokenResponseNew { success, message,
+// tokens[] } and the APK wire fields { sensors, timestamp, userId }. sensors
+// and tokens are the same DLL-format lines; Newtonsoft ignores the extras.
 function apiGet(req, res) {
-  const key = findKey(req.query.key);
-  if (!key) return res.json({ success: false, message: 'Unknown key.', tokens: [] });
+  const key = findKey(req.query.key != null ? req.query.key : req.query.userId);
+  const userId = key ? key.key_name : '';
+  const timestamp = Date.now();
+  if (!key) {
+    return res.json({ success: false, message: 'Unknown key.', tokens: [], sensors: [], timestamp, userId });
+  }
   if (key.status !== 'active') {
-    return res.json({ success: false, message: 'Your License is BLOCKED from fetching Tokens.', tokens: [] });
+    return res.json({ success: false, message: 'Your License is BLOCKED from fetching Tokens.', tokens: [], sensors: [], timestamp, userId });
   }
   const type = normType(req.query.type) || 'app';
   const rows = keyTokens.pending(key.id, type);
   keyTokens.consume(rows.map(r => r.id));
-  res.json({ success: true, message: '', tokens: rows.map(r => r.token) });
+  const tokens = rows.map(r => r.token);
+  res.json({ success: true, message: '', tokens, sensors: tokens, timestamp, userId });
 }
 
 // ----------------------------------------------------- GET /api/appconfig
