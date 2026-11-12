@@ -4,6 +4,63 @@
       <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
       <i class="icon fas fa-<%= f.type === 'success' ? 'check' : (f.type === 'danger' ? 'exclamation-triangle' : 'info') %>"></i>
       <%= f.text %>
+      <% if (f.loginDetails) { %>
+        <div class="mt-2 p-2" style="background:rgba(255,255,255,.92); color:#1f2937; border-radius:8px;">
+          <label for="created-panel-message" class="mb-1">Login Details</label>
+          <textarea id="created-panel-message" class="form-control mb-2" rows="3" readonly><%= f.loginDetails.shareMessage %></textarea>
+          <button type="button" class="btn btn-success btn-sm" data-copy-created="created-panel-message">
+            <i class="fas fa-copy mr-1"></i>Copy All Details
+          </button>
+          <a class="btn btn-outline-success btn-sm" href="https://wa.me/?text=<%= encodeURIComponent(f.loginDetails.shareMessage) %>"
+             target="_blank" rel="noopener noreferrer">
+            <i class="fab fa-whatsapp mr-1"></i>Send with WhatsApp
+          </a>
+          <span class="created-login-copy-status ml-2" role="status" aria-live="polite"></span>
+        </div>
+        <script>
+          (function () {
+            var alert = document.currentScript.previousElementSibling;
+            function copyText(text) {
+              if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+              var field = document.createElement('textarea');
+              field.value = text;
+              field.style.position = 'fixed';
+              field.style.opacity = '0';
+              document.body.appendChild(field);
+              field.select();
+              var copied = document.execCommand('copy');
+              document.body.removeChild(field);
+              return copied ? Promise.resolve() : Promise.reject(new Error('Clipboard copy was refused.'));
+            }
+            alert.addEventListener('click', function (event) {
+              var button = event.target.closest('[data-copy-created]');
+              if (button) {
+                var message = alert.querySelector('#' + button.getAttribute('data-copy-created'));
+                if (!message) return;
+                copyText(message.value).then(function () {
+                  alert.querySelector('.created-login-copy-status').textContent = 'Copied.';
+                }).catch(function () {
+                  alert.querySelector('.created-login-copy-status').textContent = 'Copy failed. Select and copy the detail manually.';
+                });
+              }
+            });
+          })();
+        </script>
+      <% } %>
+      <% if (f.paymentReceipt) { %>
+        <div class="mt-2 p-2" style="background:rgba(255,255,255,.92); color:#1f2937; border-radius:8px;">
+          <label for="payment-receipt-message" class="mb-1">Payment receipt message</label>
+          <textarea id="payment-receipt-message" class="form-control mb-2" rows="4" readonly><%= f.paymentReceipt %></textarea>
+          <a class="btn btn-success btn-sm" href="https://wa.me/?text=<%= encodeURIComponent(f.paymentReceipt) %>"
+             target="_blank" rel="noopener noreferrer">
+            <i class="fab fa-whatsapp mr-1"></i>Share receipt with WhatsApp
+          </a>
+          <a class="btn btn-outline-success btn-sm" href="/payment_receiving_history">
+            <i class="fas fa-list mr-1"></i>View Payment Receiving History
+          </a>
+          <small class="d-block mt-1">Choose the payer in WhatsApp and send the receipt link.</small>
+        </div>
+      <% } %>
     </div>
   <% }) %>
 <% } %>

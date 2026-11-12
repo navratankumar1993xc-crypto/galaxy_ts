@@ -3,6 +3,7 @@ const store = require('../../db');
 const users = require('../../src/queries/users');
 const prices = require('../../src/queries/prices');
 const keys = require('../../src/queries/keys');
+const { loginUrl, safeHttpUrl } = require('../urls');
 
 module.exports = function register(app) {
   // How long a demo runs on the website. The controller decides it by the number
@@ -49,6 +50,8 @@ module.exports = function register(app) {
       });
     };
 
+    if (!username || !password.trim()) return bad('Username and password are both required.');
+
     const user = users.verify(username, password);
     if (!user) return bad('Invalid username or password.');
     if (user.status === 'closed') return bad('Your panel is closed. Clear the due to continue.');
@@ -86,7 +89,22 @@ module.exports = function register(app) {
     // the next numbered key: DEMO01, DEMO02, DEMO03...
     const days = demoDays();
     const slot = keys.issueDemo({ owner: controller, days });
-    const expiry = store.scalar('SELECT datetime(expire_date) FROM keys WHERE id = ?', [slot.id]);
-    return res.json({ ok: true, key: slot.keyName, days: days, expiry: expiry });
+    const key = keys.get(slot.id);
+    return res.json({
+      ok: true,
+      key: slot.keyName,
+      days: days,
+      expiry: key.expire_date,
+      keyDetails: {
+        clientName: key.client_name || '—',
+        mac: key.mac || '—',
+        ips: key.ips || '—',
+        startDate: key.start_date,
+        status: key.status,
+        type: key.type
+      },
+      finalSetupLink: loginUrl(req, key.key_name),
+      setupDownloadLink: safeHttpUrl(settings.setup_link)
+    });
   });
 };

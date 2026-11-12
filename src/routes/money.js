@@ -6,11 +6,28 @@ const { subtreeIds } = require('../queries/tree');
 const { inr } = require('../config');
 
 function back(req) {
-  return req.get('referer') || '/payment_history';
+  return req.get('referer') || '/transaction';
 }
 
 function flash(req, type, text) {
   req.session.flash = [{ type, text }];
+}
+
+function receiptShareMessage(sender, acceptedPayments) {
+  const total = acceptedPayments.reduce(function (sum, p) { return sum + Number(p.amount); }, 0);
+  return [
+    'Payment received',
+    'From: ' + sender.username,
+    'Total: ' + inr(total)
+  ].join('\n');
+}
+
+function flashAcceptedPayments(req, sender, acceptedPayments) {
+  req.session.flash = [{
+    type: 'success',
+    text: acceptedPayments.length + ' pending payment(s) from ' + sender.username + ' accepted.',
+    paymentReceipt: receiptShareMessage(sender, acceptedPayments)
+  }];
 }
 
 // --------------------------------------------------------------- /transaction
@@ -18,20 +35,42 @@ function transaction(req, res) {
   res.render('tiers/transaction', { rows: payments.listInSubtree(res.locals.me.id) });
 }
 
-// ----------------------------------------------------------- /payment_history
-function paymentHistory(req, res) {
-  const me = res.locals.me;
-  res.render('tiers/payment_history', {
-    // The controller has no parent, so its "send payment" card is not rendered.
-    parent: me.parent_id ? users.getById(me.parent_id) : null,
-    payers: payments.payersOf(me.id),
-    board: payments.dueBoard(me.id, me.id),
-    rows: payments.listInSubtree(me.id)
+function paymentReceivingHistory(req, res) {
+  const rows = store.all(
+    `SELECT p.id, p.sender_id, p.amount, p.send_date, p.received_date,
+            p.key_id, p.kind, p.is_renew, s.username AS sender, k.key_name
+       FROM payments p
+       JOIN users s ON s.id = p.sender_id
+       LEFT JOIN keys k ON k.id = p.key_id
+      WHERE p.receiver_id = ? AND p.status = 'Success' AND p.received_date IS NOT NULL
+      ORDER BY p.received_date DESC, p.id DESC`,
+    [res.locals.me.id]
+  );
+  const groupsByKey = new Map();
+  rows.forEach(function (payment) {
+    const date = String(payment.received_date).slice(0, 10);
+    const key = payment.sender_id + '|' + payment.received_date;
+    let group = groupsByKey.get(key);
+    if (!group) {
+      group = {
+        sender: payment.sender,
+        date,
+        receivedAt: payment.received_date,
+        totalAmount: 0,
+        totalKeys: 0,
+        payments: []
+      };
+      groupsByKey.set(key, group);
+    }
+    group.totalAmount += Number(payment.amount);
+    if (payment.kind === 'due' || payment.key_id !== null) group.totalKeys++;
+    group.payments.push(payment);
   });
+  res.render('tiers/payment_receiving_history', { groups: Array.from(groupsByKey.values()) });
 }
 
 // A child settling up with its own parent: this only files the transfer, the
-// parent still has to accept it on their own /payment_history page.
+// parent still has to accept it via Receive Payment on their panel list.
 function sendPayment(req, res) {
   const me = res.locals.me;
   if (!me.parent_id) {
@@ -64,16 +103,38 @@ function acceptPayment(req, res) {
   }
 
   if (req.body.all) {
+    const pending = store.all(
+      `SELECT id, amount FROM payments
+        WHERE sender_id = ? AND receiver_id = ? AND status = 'Pending'
+        ORDER BY id`,
+      [senderId, me.id]
+    );
     const n = payments.acceptAllFrom(senderId, me.id);
-    flash(req, n ? 'success' : 'warning',
-      n ? n + ' pending payment(s) from ' + sender.username + ' accepted.'
-        : sender.username + ' has no pending payment to accept.');
+    if (n) {
+      flashAcceptedPayments(req, sender, pending);
+    } else {
+      flash(req, 'warning', sender.username + ' has no pending payment to accept.');
+    }
     return res.redirect(back(req));
   }
 
   const amount = Number(req.body.amount);
   if (!amount || amount <= 0) {
     flash(req, 'danger', 'Nothing to accept: the amount was empty.');
+    return res.redirect(back(req));
+  }
+
+  const pendingRows = store.all(
+    `SELECT id, amount FROM payments
+      WHERE sender_id = ? AND receiver_id = ? AND status = 'Pending'
+      ORDER BY id`,
+    [senderId, me.id]
+  );
+  const pendingTotal = pendingRows.reduce(function (sum, p) { return sum + Number(p.amount); }, 0);
+  if (pendingRows.length > 1 && amount === pendingTotal) {
+    const n = payments.acceptAllFrom(senderId, me.id);
+    if (n) flashAcceptedPayments(req, sender, pendingRows);
+    else flash(req, 'warning', sender.username + ' has no pending payment to accept.');
     return res.redirect(back(req));
   }
 
@@ -89,7 +150,10 @@ function acceptPayment(req, res) {
   );
 
   if (pending) {
-    payments.accept(pending.id, me.id);
+    if (!payments.accept(pending.id, me.id)) {
+      flash(req, 'warning', 'That payment is no longer pending.');
+      return res.redirect(back(req));
+    }
   } else {
     payments.recordBy(me.id, senderId, amount);
     // A payment big enough to take the due to zero settles the key bills under
@@ -97,8 +161,12 @@ function acceptPayment(req, res) {
     if (users.getById(senderId).due <= 0) payments.closeOpenDues(senderId, me.id);
   }
 
-  flash(req, 'success', inr(amount) + ' accepted from ' + sender.username +
-    '. Remaining due: ' + inr(users.getById(senderId).due) + '.');
+  req.session.flash = [{
+    type: 'success',
+    text: inr(amount) + ' accepted from ' + sender.username +
+      '. Remaining due: ' + inr(users.getById(senderId).due) + '.',
+    paymentReceipt: receiptShareMessage(sender, [{ amount }])
+  }];
   res.redirect(back(req));
 }
 
@@ -121,7 +189,7 @@ function receipt(req, res) {
   );
   if (!p || (me.id !== p.sender_id && me.id !== p.receiver_id && me.role !== 'controller')) {
     flash(req, 'danger', 'That receipt belongs to its sender, its receiver and the controller only.');
-    return res.redirect('/payment_history');
+    return res.redirect('/transaction');
   }
   res.render('tiers/receipt', { p });
 }
@@ -138,4 +206,6 @@ function transferHistory(req, res) {
   res.render('tiers/transfer_history', { rows: require('../queries/keys').transferLog() });
 }
 
-module.exports = { transaction, paymentHistory, sendPayment, acceptPayment, receipt, transferHistory };
+module.exports = {
+  transaction, paymentReceivingHistory, sendPayment, acceptPayment, receipt, transferHistory
+};

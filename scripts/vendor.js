@@ -35,7 +35,7 @@ const FILES = [
   'plugins/pdfmake/pdfmake.min.js',
   'plugins/pdfmake/vfs_fonts.js',
   'dist/js/adminlte.min.js',
-  'dist/js/demo.js',
+  // demo.js is test-only (pops a testing alert); the panel never loads it.
   // /add_user only: the reference validates the create-panel form with it.
   'plugins/jquery-validation/jquery.validate.min.js'
 ];

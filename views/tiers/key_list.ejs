@@ -10,11 +10,15 @@
       <%- include('../partials/flash') %>
 
       <% if (isController) { %>
+        <!-- The four controller boxes share one line; the key table below
+             keeps the full width so nothing gets cramped. -->
+        <div class="row">
+        <div class="col-lg-3 mb-3">
         <!-- ===== SELLER KEY VALIDITY BOX ===== -->
         <!-- Its own box in the controller login: the one length every seller's
              keys run for. Sellers only read the number in their generator and
              can neither change the limit nor create a longer key. -->
-        <div class="dash-card" style="margin-bottom: 20px;">
+        <div class="dash-card h-100" style="margin-bottom: 0;">
           <div class="dash-card-head" style="background: linear-gradient(135deg, #1a73e8, #1557b0) !important; color: #fff !important; border-bottom: 0 !important; border-radius: 14px 14px 0 0 !important; padding: 16px 20px !important;">
             <div class="d-flex align-items-center">
               <div class="dash-ico mr-2" style="color: #fff !important;"><i class="fas fa-calendar-day" style="color: #fff !important;"></i></div>
@@ -22,32 +26,30 @@
             </div>
           </div>
           <div class="dash-card-body" style="padding: 18px 20px;">
-            <form action="/set_seller_days" method="post" class="row align-items-end">
-              <div class="col-md-3 mb-2">
+            <form action="/set_seller_days" method="post">
+              <div class="mb-2">
                 <label class="font-weight-bold" style="font-size: 12px; color: var(--muted);"><%= boldText('Days') %></label>
                 <input type="number" name="days" min="1" max="3650" step="1" value="<%= defaultDays %>" required
                        class="form-control" style="border-color:#1a73e8; border-width: 2px; font-weight: bold;">
               </div>
-              <div class="col-md-2 mb-2">
+              <div class="mb-2">
                 <button type="submit" class="btn btn-primary btn-block font-weight-bold" style="box-shadow: 0 3px 8px rgba(26,115,232,.35);">
                   <i class="fas fa-save"></i> <%= boldText('Save') %>
                 </button>
               </div>
-              <div class="col-md-7 mb-2">
-                <small style="color: var(--muted); line-height: 1.5; display: block;">
-                  <%= boldText('Applies to every seller login.') %> Sellers can only create keys of this many days; they cannot change the limit or create a longer key.
-                </small>
-              </div>
+              <small style="color: var(--muted); line-height: 1.5; display: block;">
+                <%= boldText('Applies to every seller login.') %> Sellers can only create keys of this many days; they cannot change the limit or create a longer key.
+              </small>
             </form>
           </div>
         </div>
-      <% } %>
+        </div>
 
-      <% if (isController) { %>
+        <div class="col-lg-3 mb-3">
         <!-- ===== GIFT KEY BOX ===== -->
         <!-- The controller hands out free, already-Paid keys to a named seller
              panel. No Due or charge is ever raised for a gift key. -->
-        <div class="dash-card" style="margin-bottom: 20px;">
+        <div class="dash-card h-100" style="margin-bottom: 0;">
           <div class="dash-card-head d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #10b981, #047857) !important; color: #fff !important; border-bottom: 0 !important; border-radius: 14px 14px 0 0 !important; padding: 16px 20px !important;">
             <div class="d-flex align-items-center">
               <div class="dash-ico mr-2" style="color: #fff !important;"><i class="fas fa-gift" style="color: #fff !important;"></i></div>
@@ -63,6 +65,90 @@
               <%= boldText('Free of charge.') %> A gift key is created already Paid and transferred to the seller panel you name. No Due, payment or charge is raised on it for any login.
             </small>
           </div>
+        </div>
+        </div>
+
+        <div class="col-lg-3 mb-3">
+        <!-- ===== TOTAL KEYS BOX ===== -->
+        <!-- The red header lives up here in the row; the table itself stays
+             full-width below so the columns never get squeezed. -->
+        <div class="dash-card h-100" style="margin-bottom: 0;">
+          <div class="dash-card-head" style="background: linear-gradient(135deg, #e74c3c, #c0392b) !important; color: #fff !important; border-bottom: 0 !important; border-radius: 14px 14px 0 0 !important; padding: 16px 20px !important;">
+            <div class="d-flex align-items-center">
+              <div class="dash-ico mr-2" style="color: #fff !important;"><i class="fas fa-key" style="color: #fff !important;"></i></div>
+              <div>
+                <div class="dash-title" style="color: #fff !important;"><%= boldText('Total Keys') %></div>
+                <div class="dash-sub" style="color: rgba(255,255,255,0.85) !important;"><%= boldText('Manage keys') %></div>
+              </div>
+            </div>
+          </div>
+          <div class="dash-card-body" style="padding: 14px 20px;">
+            <div style="font-size: 34px; font-weight: 900; color: #c0392b; line-height: 1.1;"><%= rows.length %></div>
+            <small style="color: var(--muted); font-weight: 600;">keys in this login's tree — full table below</small>
+          </div>
+        </div>
+        </div>
+
+        <div class="col-lg-3 mb-3">
+        <!-- ===== ADMIN GLOBAL UTILITIES BOX ===== -->
+        <!-- The fourth box of the row. The three global actions keep their
+             exact forms, hidden fields and confirm dialogs; they simply stack
+             vertically so they fit the narrower column. -->
+        <div class="dash-card h-100" style="margin-bottom: 0;">
+          <div class="dash-card-head" style="background: linear-gradient(135deg, #6f42c1, #4b2a87) !important; color: #fff !important; border-bottom: 0 !important; border-radius: 14px 14px 0 0 !important; padding: 16px 20px !important;">
+            <div class="d-flex align-items-center">
+              <div class="dash-ico mr-2" style="color: #fff !important;"><i class="fas fa-toolbox" style="color: #fff !important;"></i></div>
+              <div class="dash-title" style="color: #fff !important;"><%= boldText('Admin Global Utilities') %></div>
+            </div>
+          </div>
+          <div class="dash-card-body" style="padding: 16px 20px;">
+            <!-- 1. Extend All -->
+            <form action="/extend_id" method="post" onsubmit="return confirm('Kya aap SABHI keys ko ' + document.getElementById('allDays').value + ' days extend karna chahte hain?')">
+              <input type="hidden" name="extend_all" value="1">
+              <div class="input-group mb-2">
+                <input type="number" id="allDays" name="days" min="1" max="3650" class="form-control" placeholder="<%= boldText('Days') %>" required style="border-color:#ffc107; border-width: 2px; font-weight: bold;">
+                <div class="input-group-append">
+                  <button type="submit" class="btn btn-warning font-weight-bold" style="box-shadow: 0 3px 8px rgba(255,193,7,.4);"><i class="fas fa-bolt"></i> <%= boldText('Extend All') %></button>
+                </div>
+              </div>
+            </form>
+
+            <!-- 2. Reset MAC -->
+            <form method="post" onsubmit="return confirm('Kya aap SABHI keys ka MAC Reset (Unregister) karna chahte hain? Ye action undo nahi hoga!')">
+              <input type="hidden" name="reset_all_mac" value="1">
+              <button type="submit" class="btn btn-primary btn-block font-weight-bold mb-2" style="border-radius: 6px; border-width: 2px; box-shadow: 0 3px 8px rgba(0,123,255,.4);"><i class="fas fa-laptop"></i> <%= boldText('Reset All MAC') %></button>
+            </form>
+
+            <!-- 3. Mass Delete -->
+            <form method="post" onsubmit="return confirm('WARNING: Are you sure you want to MASS DELETE keys? This action CANNOT be undone!')">
+              <input type="hidden" name="mass_delete_submit" value="1">
+              <select name="delete_type" required class="form-control mb-2" style="border-color:#dc3545; border-width: 2px; font-weight: bold; font-size: 13px; background-color: var(--bg); color: var(--ink);">
+                <option value="">-- <%= boldText('Delete Target') %> --</option>
+                <option value="expired"><%= boldText('Expired Keys') %></option>
+                <option value="deactive"><%= boldText('Deactive Keys') %></option>
+                <option value="unpaid"><%= boldText('Unpaid Keys') %></option>
+                <option value="mac_unregistered"><%= boldText('No MAC Keys') %></option>
+                <% /* Our addition: the website hands out DEMO01, DEMO02, ...
+                        without asking anyone, so the controller needs one
+                        target that clears the whole stack in a single go. */ %>
+                <option value="demo"><%= boldText('Demo Keys') %></option>
+              </select>
+              <div class="input-group">
+                <input type="password" name="admin_pass" placeholder="<%= boldText('Password') %>" required class="form-control" style="border-color:#dc3545; border-width: 2px; font-weight: bold; font-size: 13px;">
+                <div class="input-group-append">
+                  <button type="submit" class="btn btn-danger font-weight-bold" title="Delete Now" style="box-shadow: 0 3px 8px rgba(220,53,69,.4);"><i class="fas fa-trash-alt"></i> <%= boldText('Delete') %></button>
+                </div>
+              </div>
+            </form>
+
+            <!-- ===== DEMO KEY ===== -->
+            <!-- There is deliberately nothing here. A demo is what the website
+                 hands out (one click gives DEMO01, DEMO02, ...), and the only
+                 controller decision about it is the on/off switch plus the days
+                 box in the sidebar. -->
+          </div>
+        </div>
+        </div>
         </div>
 
         <!-- ===== CREATE GIFT KEY MODAL ===== -->
@@ -170,6 +256,9 @@
       <% } %>
 
       <div class="dash-card">
+        <% /* The controller's red Total Keys header sits in the top row; every
+                other tier keeps it here on the table card. */ %>
+        <% if (!isController) { %>
         <div class="dash-card-head d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #e74c3c, #c0392b) !important; color: #fff !important; border-bottom: 0 !important; border-radius: 14px 14px 0 0 !important; padding: 18px 20px !important;">
           <div class="d-flex align-items-center">
             <div class="dash-ico mr-2" style="color: #fff !important;"><i class="fas fa-key" style="color: #fff !important;"></i></div>
@@ -179,69 +268,10 @@
             </div>
           </div>
         </div>
+        <% } %>
 
         <div class="dash-card-body">
-          <% if (isController) { %>
-            <!-- ===== CONTROLLER TABLE TOOLBAR ===== -->
-            <div style="margin-bottom: 20px; background: var(--card); padding: 18px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid var(--line); color: var(--ink);">
-              <div style="font-weight: 900; font-size: 16px; margin-bottom: 15px; color: var(--ink); border-bottom: 2px solid var(--line); padding-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">
-                <i class="fas fa-toolbox text-primary"></i> <%= boldText('Admin Global Utilities') %>
-              </div>
-
-              <div class="row align-items-center">
-                <!-- 1. Extend All -->
-                <div class="col-md-4 mb-2">
-                  <form action="/extend_id" method="post" onsubmit="return confirm('Kya aap SABHI keys ko ' + document.getElementById('allDays').value + ' days extend karna chahte hain?')">
-                    <input type="hidden" name="extend_all" value="1">
-                    <div class="input-group">
-                      <input type="number" id="allDays" name="days" min="1" max="3650" class="form-control" placeholder="<%= boldText('Days') %>" required style="border-color:#ffc107; border-width: 2px; font-weight: bold;">
-                      <div class="input-group-append">
-                        <button type="submit" class="btn btn-warning font-weight-bold" style="box-shadow: 0 3px 8px rgba(255,193,7,.4);"><i class="fas fa-bolt"></i> <%= boldText('Extend All') %></button>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-
-                <!-- 2. Reset MAC -->
-                <div class="col-md-3 mb-2">
-                  <form method="post" onsubmit="return confirm('Kya aap SABHI keys ka MAC Reset (Unregister) karna chahte hain? Ye action undo nahi hoga!')">
-                    <input type="hidden" name="reset_all_mac" value="1">
-                    <button type="submit" class="btn btn-primary btn-block font-weight-bold" style="border-radius: 6px; border-width: 2px; box-shadow: 0 3px 8px rgba(0,123,255,.4);"><i class="fas fa-laptop"></i> <%= boldText('Reset All MAC') %></button>
-                  </form>
-                </div>
-
-                <!-- 3. Mass Delete -->
-                <div class="col-md-5 mb-2">
-                  <form method="post" onsubmit="return confirm('WARNING: Are you sure you want to MASS DELETE keys? This action CANNOT be undone!')">
-                    <input type="hidden" name="mass_delete_submit" value="1">
-                    <div class="input-group">
-                      <select name="delete_type" required class="form-control" style="border-color:#dc3545; border-width: 2px; font-weight: bold; font-size: 13px; background-color: var(--bg); color: var(--ink);">
-                        <option value="">-- <%= boldText('Delete Target') %> --</option>
-                        <option value="expired"><%= boldText('Expired Keys') %></option>
-                        <option value="deactive"><%= boldText('Deactive Keys') %></option>
-                        <option value="unpaid"><%= boldText('Unpaid Keys') %></option>
-                        <option value="mac_unregistered"><%= boldText('No MAC Keys') %></option>
-                        <% /* Our addition: the website hands out DEMO01, DEMO02, ...
-                                without asking anyone, so the controller needs one
-                                target that clears the whole stack in a single go. */ %>
-                        <option value="demo"><%= boldText('Demo Keys') %></option>
-                      </select>
-                      <input type="password" name="admin_pass" placeholder="<%= boldText('Password') %>" required class="form-control" style="max-width:90px; border-color:#dc3545; border-width: 2px; font-weight: bold; font-size: 13px;">
-                      <div class="input-group-append">
-                        <button type="submit" class="btn btn-danger font-weight-bold" title="Delete Now" style="box-shadow: 0 3px 8px rgba(220,53,69,.4);"><i class="fas fa-trash-alt"></i></button>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-              </div>
-
-              <!-- ===== DEMO KEY ===== -->
-              <!-- There is deliberately nothing here. A demo is what the website
-                   hands out (one click gives DEMO01, DEMO02, ...), and the only
-                   controller decision about it is the on/off switch plus the days
-                   box in the sidebar. -->
-            </div>
-          <% } else if (isSeller) { %>
+          <% if (isSeller) { %>
             <!-- ===== SELLER KEY GENERATOR ===== -->
             <!-- Making a key is the seller's job alone. The form lives in the
                  "Generate New Key" modal, the way the upstream panel presents
@@ -303,21 +333,13 @@
             </div>
           <% } %>
 
-          <% /* The five tiers above the seller live in ONE dropdown instead of
-                 five wide columns: pick a tier and the single column beside
-                 Mac ID prints that tier's panel name for every key. The Seller
-                 column stays on its own. */ %>
-          <div class="form-inline mb-2" style="gap: 8px;">
-            <label for="chainPick" class="font-weight-bold mb-0"><%= boldText('Panel Tier') %>:</label>
-            <select id="chainPick" class="form-control" style="width: auto; min-width: 170px; font-weight: 700;"
-                    onchange="location.href='/all_key?filter=<%= filter %>&chain=' + encodeURIComponent(this.value)">
-              <% CHAIN_PICK_TIERS.forEach(function (t) { %>
-                <option value="<%= t.role %>"<%= t.role === chainTier.role ? ' selected' : '' %>><%= t.pickLabel %></option>
-              <% }) %>
-            </select>
-            <small class="text-muted"><%= boldText('The column shows the chosen tier’s panel name for every key.') %></small>
-          </div>
-
+          <style>
+            /* One line of named actions per key: a non-wrapping flex row, with
+               the buttons compacted just enough that all nine fit the column. */
+            .key-actions-row { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; }
+            .key-actions-row .btn { padding: 4px 8px; font-size: 12px; margin: 0; white-space: nowrap; }
+            .key-actions-row > a, .key-actions-row > form { display: inline-flex; margin: 0; }
+          </style>
           <div class="table-responsive">
             <!-- The tier heading and cells come from CHAIN_TIERS (src/config.js) in
                  chain order, so a new tier lands here without touching this view. -->
@@ -329,10 +351,7 @@
                   <th>Mac ID</th>
                   <th><%= chainTier.pickLabel %></th>
                   <th>Seller</th>
-                  <th>Start Date</th>
-                  <th>Expiry Date</th>
-                  <th>Validity (Days)</th>
-                  <th>Left Days</th>
+                  <th>Expiry</th>
                   <th>Has Paid</th>
                   <th>Type</th>
                   <th>Action</th>
@@ -341,7 +360,7 @@
               <tbody>
                 <% rows.forEach(function (k) { %>
                   <tr>
-                    <td><%= k.key_name %></td>
+                    <td><span class="font-weight-bold"><%= k.key_name %></span></td>
                     <td>
                       <% /* A gift key carries the fixed label GIFT KEY in place of a
                              customer name; ordinary keys show what was typed. */ %>
@@ -365,11 +384,13 @@
                     </td>
                     <td><%= k[chainTier.field] %></td>
                     <td><%= k.seller %></td>
-                    <td><%= k.start_date %></td>
-                    <td><%= k.expire_date %></td>
-                    <td><%= k.days %></td>
+                    <% /* One Expiry cell, the way the reference prints it: the
+                           date on top, the days left under it in cyan. The old
+                           Start Date / Expiry Date / Left Days columns are gone;
+                           a negative balance still paints the cell warning. */ %>
                     <td class="<%= k.left_days_negative ? 'bg-warning' : '' %>">
-                      <%= k.left_days %>
+                      <span class="font-weight-bold"><%= dateLabel(k.expire_date) %></span><br>
+                      <span class="font-weight-bold" style="color: #29c5f6;"><%= k.left_days %> Days Left</span>
                     </td>
                     <td>
                       <% if (k.has_paid) { %>
@@ -384,7 +405,7 @@
                             <input type="hidden" name="key_id" value="<%= k.id %>">
                             <button type="submit" class="btn btn-sm" title="Mark Paid — bills <%= k.markPaid.username %> <%= inr(k.markPaid.price) %>"
                                     style="background: #10b981 !important; border: 0 !important; color: #fff !important; padding: 2px 8px; font-weight: 800;">
-                              <i class="fas fa-circle-dollar-to-slot"></i>
+                              <i class="fas fa-circle-dollar-to-slot"></i> <%= boldText('Mark Paid') %>
                             </button>
                           </form>
                         <% } %>
@@ -392,7 +413,7 @@
                     </td>
                     <td>
                       <% if (k.is_gift) { %>
-                        <span class="badge badge-success"><%= boldText('Gift') %></span>
+                        <span class="badge" style="background: #ffc107; color: #1f2937; border-radius: 8px; padding: 7px 14px; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; vertical-align: middle;"><i class="fas fa-gift" style="color: #e0245e;"></i><%= boldText('Gifted Key') %></span>
                       <% } else if (k.type === 'demo') { %>
                         <span class="badge badge-info"><%= boldText('Demo') %></span>
                       <% } else { %>
@@ -400,6 +421,7 @@
                       <% } %>
                     </td>
                     <td>
+                      <div class="key-actions-row">
                       <% /* A gift key follows the same rules as a normal key for every
                              tier. The single exception is the client name: it stays
                              GIFT KEY and carries no editor. Everything else (reset id,
@@ -409,7 +431,7 @@
                              an ordinary key; a gift's label stays GIFT KEY. */ %>
                       <% if (!k.is_gift) { %>
                       <button class="btn btn-info btn-sm" title="Edit Client Name" data-toggle="modal" data-target="#modal-client<%= k.id %>" style="background: #3b82f6 !important; border: 0 !important; color: #fff !important;">
-                        <i class="fas fa-edit"></i>
+                        <i class="fas fa-edit"></i> <%= boldText('Edit Name') %>
                       </button>
                       <% } %>
 
@@ -436,7 +458,7 @@
                              alone, and only gift rows carry the control. */ %>
                       <% if (k.is_gift && isController) { %>
                       <button class="btn btn-sm" title="Transfer Gift Key" data-toggle="modal" data-target="#modal-gift-transfer<%= k.id %>" style="background: #10b981 !important; border: 0 !important; color: #fff !important;">
-                        <i class="fas fa-share"></i>
+                        <i class="fas fa-share"></i> <%= boldText('Transfer Gift') %>
                       </button>
                       <% } %>
 
@@ -445,19 +467,19 @@
                              refuses them as well. */ %>
                       <% if (k.canDelete) { %>
                         <button class="btn btn-danger btn-sm" title="Delete Key" data-toggle="modal" data-target="#modal-delete-name<%= k.id %>" style="background: #ef4444 !important; border: 0 !important; color: #fff !important;">
-                          <i class="fas fa-trash"></i>
+                          <i class="fas fa-trash"></i> <%= boldText('Delete') %>
                         </button>
                       <% } %>
 
-                      <a href='/status_update?r_id=<%= k.id %>'><button class='btn btn-warning btn-sm' title='Reset Id' style='background: #ffc107 !important; border: 0 !important; color: #fff !important;'><i class='fas fa-key'></i></button></a>
+                      <a href='/status_update?r_id=<%= k.id %>'><button class='btn btn-warning btn-sm' title='Reset Id' style='background: #ffc107 !important; border: 0 !important; color: #fff !important;'><i class='fas fa-key'></i> <%= boldText('Reset Id') %></button></a>
 
                       <% if (k.status === 'active') { %>
                         <a href="/status_update?ac_id=<%= k.id %>">
-                          <button class="btn btn-success btn-sm" title="Activated" style="background: #10b981 !important; border: 0 !important; color: #fff !important;"><i class="fas fa-check-circle"></i></button>
+                          <button class="btn btn-success btn-sm" title="Activated" style="background: #10b981 !important; border: 0 !important; color: #fff !important;"><i class="fas fa-check-circle"></i> <%= boldText('Active') %></button>
                         </a>
                       <% } else { %>
                         <a href="/status_update?ac_id=<%= k.id %>">
-                          <button class="btn btn-danger btn-sm" title="Not Activated" style="background: #ef4444 !important; border: 0 !important; color: #fff !important;"><i class="fas fa-ban"></i></button>
+                          <button class="btn btn-danger btn-sm" title="Not Activated" style="background: #ef4444 !important; border: 0 !important; color: #fff !important;"><i class="fas fa-ban"></i> <%= boldText('Deactive') %></button>
                         </a>
                       <% } %>
 
@@ -469,13 +491,13 @@
                           <%= boldText('Edit Validity') %>
                         </button>
                         <button class="btn btn-sm" title="Validity History" data-toggle="modal" data-target="#modal-vhist<%= k.id %>" style="background: #0ea5e9 !important; border: 0 !important; color: #fff !important;">
-                          <i class="fas fa-clock-rotate-left"></i>
+                          <i class="fas fa-clock-rotate-left"></i> <%= boldText('History') %>
                         </button>
                         <% /* One click tells the controller whose key this is and
                                under which panels it falls — every level of the
                                key's own hierarchy, nothing hidden. */ %>
                         <button class="btn btn-sm" title="Key Hierarchy" data-toggle="modal" data-target="#modal-hierarchy<%= k.id %>" style="background: #6366f1 !important; border: 0 !important; color: #fff !important;">
-                          <i class="fas fa-sitemap"></i>
+                          <i class="fas fa-sitemap"></i> <%= boldText('Hierarchy') %>
                         </button>
                         <% /* Complete Key Transfer is the controller's alone and
                                moves the key together with its whole account —
@@ -484,7 +506,7 @@
                                control, so this one is for ordinary keys. */ %>
                         <% if (!k.is_gift) { %>
                         <button class="btn btn-sm" title="Transfer Key (whole account)" data-toggle="modal" data-target="#modal-transfer<%= k.id %>" style="background: #f97316 !important; border: 0 !important; color: #fff !important;">
-                          <i class="fas fa-right-left"></i>
+                          <i class="fas fa-right-left"></i> <%= boldText('Transfer') %>
                         </button>
                         <% } %>
                       <% } %>
@@ -492,8 +514,9 @@
                       <!-- The reference emits the Add IP modal but never a trigger
                            for it; this button makes that existing form reachable. -->
                       <button class="btn btn-sm" title="Add IP" data-toggle="modal" data-target="#modal-ip<%= k.id %>" style="background: #0f172a !important; border: 0 !important; color: #fff !important;">
-                        <i class="fas fa-network-wired"></i>
+                        <i class="fas fa-network-wired"></i> <%= boldText('Add IP') %>
                       </button>
+                      </div>
                     </td>
                   </tr>
                 <% }) %>
@@ -604,8 +627,8 @@
                     </div>
                   </div>
 
-                  <label class="font-weight-bold" style="font-size: 15px; color: #1f2937; margin: 16px 0 6px;"><%= boldText('Transfer To Panel') %></label>
-                  <input type="text" class="form-control tr-search" placeholder="Search panel…" autocomplete="off"
+                  <label class="font-weight-bold" style="font-size: 15px; color: #1f2937; margin: 16px 0 6px;"><%= boldText('Transfer To Seller Panel') %></label>
+                  <input type="text" class="form-control tr-search" placeholder="Search seller…" autocomplete="off"
                          style="border: 1px solid #d1d5db; border-radius: 8px; height: 44px; font-size: 15px;">
                   <div class="tr-drop" style="display: none; border: 1px solid #d1d5db; border-radius: 8px; margin-top: 6px; background: #fff;">
                     <div class="tr-list" style="max-height: 190px; overflow-y: auto;">
@@ -617,7 +640,7 @@
                         </button>
                       <% }) %>
                       <% if (!transferTargets.length) { %>
-                        <div style="padding: 10px 12px; color: var(--muted); font-size: 13px;">No panels below the controller yet.</div>
+                        <div style="padding: 10px 12px; color: var(--muted); font-size: 13px;">No seller panels below the controller yet.</div>
                       <% } %>
                     </div>
                   </div>

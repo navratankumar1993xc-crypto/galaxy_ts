@@ -1,0 +1,170 @@
+<%- include('../partials/head') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+
+<div class="content-wrapper">
+  <%- include('../partials/pagehead') %>
+  <section class="content">
+    <div class="container-fluid">
+      <%- include('../partials/flash') %>
+      <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+          <div class="dash-card">
+            <div class="dash-card-head d-flex align-items-center justify-content-between flex-wrap">
+              <div class="d-flex align-items-center">
+                <div class="dash-ico mr-2"><i class="fas fa-money-check-alt"></i></div>
+                <div>
+                  <div class="dash-title"><%= boldText('Payment Receiving History') %></div>
+                  <div class="dash-sub">One summary per payer per day; open More Details to see every payment.</div>
+                </div>
+              </div>
+            </div>
+            <div class="dash-card-body">
+              <% if (groups.length) { %>
+                <div style="max-height: <%= groups.length > 5 ? '390px' : 'none' %>; overflow-y: <%= groups.length > 5 ? 'auto' : 'visible' %>; border: 1px solid var(--line); border-radius: 8px;">
+                  <table class="table table-bordered table-striped mb-0">
+                    <thead>
+                      <tr>
+                        <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">S.No.</th>
+                        <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">Date</th>
+                        <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">Received From</th>
+                        <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">Total Amount</th>
+                        <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">Total Keys</th>
+                        <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">Details</th>
+                        <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">PDF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% groups.forEach(function (group, index) { %>
+                        <tr>
+                          <td><%= index + 1 %></td>
+                          <td>
+                            <%= group.date.split('-').reverse().join('-') %>
+                            <small class="d-block text-muted"><%= String(group.receivedAt).slice(11) %></small>
+                          </td>
+                          <td><%= group.sender %></td>
+                          <td><%= inr(group.totalAmount) %></td>
+                          <td><%= group.totalKeys %></td>
+                          <td>
+                            <details>
+                              <summary style="cursor: pointer; color: #0c84c6; font-weight: 700;">More Details</summary>
+                              <div class="table-responsive mt-2">
+                                <table class="table table-sm table-bordered mb-0">
+                                  <thead>
+                                    <tr>
+                                      <th>#</th>
+                                      <th>Key</th>
+                                      <th>Amount</th>
+                                      <th>Type</th>
+                                      <th>Reference</th>
+                                      <th>Sent</th>
+                                      <th>Received</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <% group.payments.forEach(function (payment, paymentIndex) { %>
+                                      <tr>
+                                        <td><%= paymentIndex + 1 %></td>
+                                        <td><%= payment.key_name || (payment.kind === 'due' ? 'Key removed' : 'Direct payment') %><%= payment.is_renew ? ' (Renewal)' : '' %></td>
+                                        <td><%= inr(payment.amount) %></td>
+                                        <td><%= payment.kind === 'due' ? 'Key due' : 'Direct payment' %></td>
+                                        <td><%= payment.id %></td>
+                                        <td><%= payment.send_date %></td>
+                                        <td><%= payment.received_date %></td>
+                                      </tr>
+                                    <% }) %>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </details>
+                          </td>
+                          <td>
+                            <button type="button" class="btn btn-danger btn-sm" data-payment-history-index="<%= index %>">
+                              <i class="fas fa-file-pdf"></i> PDF
+                            </button>
+                          </td>
+                        </tr>
+                      <% }) %>
+                    </tbody>
+                  </table>
+                </div>
+              <% } else { %>
+                <div class="text-center text-muted py-5">
+                  <i class="fas fa-receipt fa-2x mb-2"></i>
+                  <p class="mb-0">No received payments yet.</p>
+                </div>
+              <% } %>
+              <div id="payment-history-pdf-status" class="mt-2 text-danger" role="status" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function () {
+    var groups = <%- JSON.stringify(groups).replace(/</g, '\\u003c') %>;
+    var buttons = document.querySelectorAll('[data-payment-history-index]');
+    var status = document.getElementById('payment-history-pdf-status');
+    buttons.forEach(function (button) {
+      button.addEventListener('click', function () {
+      if (!window.pdfMake) {
+        status.textContent = 'PDF export is unavailable. Reload the page and try again.';
+        return;
+      }
+      var group = groups[Number(button.getAttribute('data-payment-history-index'))];
+      if (!group) {
+        status.textContent = 'Selected date details could not be loaded.';
+        return;
+      }
+      var content = [
+        { text: 'Payment Receiving History', style: 'header' },
+        { text: group.date.split('-').reverse().join('-') + ' ' + String(group.receivedAt).slice(11) + ' | ' + group.sender, margin: [0, 0, 0, 6] },
+        {
+          text: 'Total: Rs ' + Number(group.totalAmount).toLocaleString('en-IN') +
+            ' | Keys: ' + group.totalKeys,
+          style: 'group',
+          margin: [0, 0, 0, 10]
+        },
+        {
+          table: {
+            headerRows: 1,
+            widths: ['auto', '*', 'auto', 'auto', 'auto', '*', '*'],
+            body: [
+              ['#', 'Key', 'Amount', 'Type', 'Reference', 'Sent', 'Received'],
+              ...group.payments.map(function (payment, paymentIndex) {
+                return [
+                  String(paymentIndex + 1),
+                  (payment.key_name || (payment.kind === 'due' ? 'Key removed' : 'Direct payment')) +
+                    (payment.is_renew ? ' (Renewal)' : ''),
+                  'Rs ' + Number(payment.amount).toLocaleString('en-IN'),
+                  payment.kind === 'due' ? 'Key due' : 'Direct payment',
+                  String(payment.id),
+                  String(payment.send_date || ''),
+                  String(payment.received_date || '')
+                ];
+              })
+            ]
+          },
+          layout: 'lightHorizontalLines'
+        }
+      ];
+      window.pdfMake.createPdf({
+        pageOrientation: 'landscape',
+        pageMargins: [24, 28, 24, 28],
+        content: content,
+        styles: {
+          header: { fontSize: 18, bold: true, margin: [0, 0, 0, 6] },
+          group: { fontSize: 11, bold: true, margin: [0, 8, 0, 5] }
+        },
+        defaultStyle: { fontSize: 8 }
+      }).download('payment-receiving-history-' + group.sender + '-' +
+        group.receivedAt.replace(/[^0-9]/g, '-') + '.pdf');
+      status.textContent = '';
+      });
+    });
+  })();
+</script>
+<%- include('../partials/foot', { pdfExport: true }) %>

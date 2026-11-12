@@ -20,6 +20,11 @@
 // thing it does is prove the owner's rows — including every password hash — are
 // exactly as found.
 // ---------------------------------------------------------------------------
+// Writes and deletes panels: only ever against the runner's throwaway DB.
+if (!process.env.GALAXY_DB) {
+  console.error('Refusing to run against the live database. Use: npm run check');
+  process.exit(1);
+}
 const BASE = process.env.GALAXY_BASE || 'http://localhost:3000';
 const store = require('../db');
 const { ROLES, boldText } = require('../src/config');

@@ -140,7 +140,11 @@ const DEFAULT_SETTINGS = {
   // /link_management; empty means the button still shows but goes nowhere.
   setup_link: '',
   updater_link: '',
-  apk_link: ''
+  apk_link: '',
+  // Token Manager QR targets. The controller edits these on /link_management;
+  // the client software reads them from /api/appconfig and builds the QR codes.
+  apk_app_link: '',
+  apk_beta_link: ''
 };
 
 // Observed on the reference /set_price table, with the Super Seller row slotted
@@ -172,7 +176,11 @@ function dateLabel(value, withYear = true) {
 
 module.exports = {
   ROOT,
-  DB_FILE: path.join(ROOT, 'data', 'galaxy.db'),
+  // The check runner points GALAXY_DB at a throwaway database it deletes
+  // afterwards; without it the panel always uses the owner's working data.
+  DB_FILE: process.env.GALAXY_DB
+    ? path.resolve(process.env.GALAXY_DB)
+    : path.join(ROOT, 'data', 'galaxy.db'),
   UPLOAD_DIR: path.join(ROOT, 'data', 'uploads'),
   // The reference stamps its theme stylesheet with a cache-buster query; ours is
   // the file's own mtime, which is what that number is on the original.
@@ -185,6 +193,9 @@ module.exports = {
   })(),
   PORT: Number(process.env.PORT || 3000),
   SESSION_SECRET: process.env.SESSION_SECRET || 'galaxy-panel-local-secret',
+  // Set this to the site's public origin when it differs from the request host
+  // (for example, when TLS terminates at a reverse proxy).
+  PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL || '',
   bold,
   boldText,
   BRAND,

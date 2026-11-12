@@ -58,10 +58,18 @@ function menuFor(role) {
   }
 
   items.push({ href: '/transaction', icon: 'fas fa-home', label: 'Transaction', match: '/transaction' });
+  items.push({
+    href: '/payment_receiving_history',
+    icon: 'fas fa-money-check-alt',
+    label: 'Payment Receiving History',
+    match: '/payment_receiving_history'
+  });
 
   if (isController) {
     items.push({ href: '/set_price', icon: 'fas fa-school', label: 'Set Prices', match: '/set_price' });
+    items.push({ href: '/pair_limits', icon: 'fas fa-sliders-h', label: 'Pair Limits', match: '/pair_limits' });
     items.push({ href: '/link_management', icon: 'fas fa-link', label: 'Link Management', match: '/link_management' });
+    items.push({ href: '/key_tokens', icon: 'fas fa-key', label: 'Key Tokens', match: '/key_tokens' });
   }
 
   items.push({ href: '/news', icon: 'fas fa-store', label: 'News', match: '/news' });
@@ -74,8 +82,6 @@ function menuFor(role) {
     });
     items.push({ switchItem: true });
   }
-
-  items.push({ href: '/payment_history', icon: 'fas fa-database', label: 'DUE REVISED PAYMENT', match: '/payment_history' });
 
   if (isController) {
     items.push({ href: '/today_result', icon: 'fas fa-check', label: 'Today Result', match: '/today_result' });

@@ -5,7 +5,7 @@ const users = require('./users');
 const prices = require('./prices');
 const keys = require('./keys');
 
-// /transaction shows settled rows; /payment_history shows who owes what.
+// The consolidated ledger behind /transaction and the per-child histories.
 function listInSubtree(rootId) {
   const { sql, params } = inClause(subtreeIds(rootId));
   return store.all(
@@ -180,38 +180,27 @@ function closeOpenDues(senderId, receiverId) {
   ).changes);
 }
 
-// One row per user in the subtree, carrying that user's due and latest payment.// Matches the reference layout, where a user with nothing owed reads "Clear / No Due".
-// `receiverId` is the viewer, whose pending transfers decide the 1-Click button.
-function dueBoard(rootId, receiverId) {
-  const { sql, params } = inClause(subtreeIds(rootId).filter(id => id !== rootId));
-  if (!params.length) return [];
+// Every pending row one child has filed to one receiver — what the receiver's
+// "Receive Payment" modal offers to accept (transfers and open key bills alike).
+function pendingFrom(senderId, receiverId) {
   return store.all(
-    `SELECT u.id, u.username, u.role, u.due, u.status,
-            (SELECT COUNT(*) FROM payments q
-              WHERE q.sender_id = u.id AND q.receiver_id = ? AND q.status = 'Pending') AS pending,
-            p.sender_id   AS paid_by_id,
-            p.receiver_id AS accepted_by_id,
-            ps.username   AS paid_by,
-            pr.username   AS accepted_by,
-            p.amount, p.send_date, p.received_date, p.status AS payment_status, p.id AS payment_id
-       FROM users u
-       LEFT JOIN payments p ON p.id = (
-              SELECT id FROM payments x WHERE x.sender_id = u.id ORDER BY x.id DESC LIMIT 1)
-       LEFT JOIN users ps ON ps.id = p.sender_id
-       LEFT JOIN users pr ON pr.id = p.receiver_id
-      WHERE u.id IN (${sql})
-      ORDER BY u.due DESC, u.username`,
-    [receiverId, ...params]
+    `SELECT p.*, k.key_name FROM payments p
+       LEFT JOIN keys k ON k.id = p.key_id
+      WHERE p.sender_id = ? AND p.receiver_id = ? AND p.status = 'Pending'
+      ORDER BY p.id`,
+    [senderId, receiverId]
   );
 }
 
-// Users eligible to pay the requester, for the /payment_history sender dropdown.
-function payersOf(rootId) {
-  const { sql, params } = inClause(subtreeIds(rootId).filter(id => id !== rootId));
-  if (!params.length) return [];
+// The full ledger between one child and one receiver, newest first — the
+// "Payment History" record of everything that child paid / owes this receiver.
+function between(senderId, receiverId) {
   return store.all(
-    `SELECT id, username, role, due FROM users WHERE id IN (${sql}) ORDER BY username`,
-    params
+    `SELECT p.*, k.key_name FROM payments p
+       LEFT JOIN keys k ON k.id = p.key_id
+      WHERE p.sender_id = ? AND p.receiver_id = ?
+      ORDER BY p.id DESC`,
+    [senderId, receiverId]
   );
 }
 
@@ -269,6 +258,7 @@ function transferAccount({ key, target, byUsername }) {
 }
 
 module.exports = {
-  listInSubtree, payUp, accept, acceptAllFrom, recordBy, dueBoard, payersOf,
-  billableChildren, chargeKey, openDues, closeOpenDues, keyAccount, transferAccount
+  listInSubtree, payUp, accept, acceptAllFrom, recordBy,
+  billableChildren, chargeKey, openDues, closeOpenDues, keyAccount, transferAccount,
+  pendingFrom, between
 };

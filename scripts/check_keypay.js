@@ -19,9 +19,14 @@
 // again at the end. The last thing it does is prove the rows that were already
 // there, owner data like RANI and RAJA22, are still there, value for value.
 // ---------------------------------------------------------------------------
+// Writes and deletes panels/keys: only ever against the runner's throwaway DB.
+if (!process.env.GALAXY_DB) {
+  console.error('Refusing to run against the live database. Use: npm run check');
+  process.exit(1);
+}
 const BASE = process.env.GALAXY_BASE || 'http://localhost:3000';
 const store = require('../db');
-const { boldText } = require('../src/config');
+const { boldText, dateLabel } = require('../src/config');
 
 const SEED = { user: 'YOGIMASTER', pass: 'demo123' };   // master_admin, seeded
 // The three jobs the brief splits by role: a seller creates keys, the controller
@@ -124,6 +129,10 @@ function snapshot() {
   const sellerDays = Number(store.scalar("SELECT value FROM settings WHERE key = 'panel_days'")) || 30;
 
   const before = snapshot();
+  // Every bill this run raises is new. Remembering the ids lets the cleanup
+  // reverse chain bills even when their key was deleted mid-suite: a bill
+  // outlives its key by design, so joining on the key would miss orphans.
+  const startBillIds = new Set(store.all('SELECT id FROM payments').map(r => r.id));
 
   const master = jar(); const admin = jar(); const up = jar(); const sell = jar();
   const sell2 = jar();
@@ -266,10 +275,17 @@ function snapshot() {
   check('Due record is open', 'Pending', rows1[0] && rows1[0].status);
   check('Due record is owed to the parent', userOf(KPT_SUPER).id, rows1[0] && rows1[0].receiver_id);
 
-  const hist1 = (await sell.get('/payment_history')).html;
-  check('history shows the Due record', true, hasBadge(hist1, 'warning', '𝐃𝐮𝐞'));
+  // The parent's panel list carries both the Receive modal and the per-child
+  // Payment History modal; the seller reads the same bill on /transaction.
+  const hist1 = (await up.get('/all_seller')).html;
+  check('the parent’s Payment History modal lists the bill', true, hist1.indexOf('KPTKEY1') >= 0);
+  check('the Payment History modal has grouped summary details', true,
+    hist1.includes('Total Keys') && hist1.includes('More Details'));
+  check('each Payment History date offers PDF export', true,
+    hist1.includes('data-payment-history-export="' + userOf(KPT_SELLER).id + '"'));
   check('transaction shows it too', true, hasBadge((await sell.get('/transaction')).html, 'warning', '𝐃𝐮𝐞'));
-  check('the parent board lists the owing panel', true, (await up.get('/payment_history')).html.indexOf(KPT_SELLER) >= 0);
+  check('the Receive modal names the owing panel', true,
+    hist1.indexOf('name="sender_id" value="' + userOf(KPT_SELLER).id + '"') >= 0);
 
   // ======================================================== 4. the parent receives
   console.log('\n4. the parent receives it; the Due record becomes the Paid record');
@@ -279,9 +295,9 @@ function snapshot() {
   check('due back to where it started', panelDue, dueOf(KPT_SELLER));
   check('still the one record for that key', 1, rows2.length);
 
-  const hist2 = (await sell.get('/payment_history')).html;
-  check('history now reads Paid', true, hasBadge(hist2, 'success', '𝐏𝐚𝐢𝐝 &#9989;'));
-  check('the Due badge is gone', false, hasBadge(hist2, 'warning', '𝐃𝐮𝐞'));
+  const hist2 = (await up.get('/all_seller')).html;
+  check('the parent’s history still names the key', true, hist2.indexOf('KPTKEY1') >= 0);
+  check('the Due badge is gone from the ledger', false, hasBadge((await sell.get('/transaction')).html, 'warning', '𝐃𝐮𝐞'));
   check('transaction agrees', true, hasBadge((await sell.get('/transaction')).html, 'success', '𝐏𝐚𝐢𝐝'));
 
   console.log('\n5. marking an already Paid key does not bill twice');
@@ -468,8 +484,8 @@ function snapshot() {
   const grow = giftList.slice(gi, giftList.indexOf('</tr>', gi));
   check('the seller sees the gift row', true, gi >= 0);
   check('the client column reads GIFT KEY', true, grow.indexOf(boldText('GIFT KEY')) >= 0);
-  check('the expiry date is shown', true, grow.indexOf(g1.expire_date) >= 0);
-  check('the validity is shown', true, grow.indexOf('<td>15</td>') >= 0);
+  check('the expiry date is shown', true, grow.indexOf(dateLabel(g1.expire_date)) >= 0);
+  check('the days-left line is shown', true, grow.indexOf('Days Left') >= 0);
   check('the status reads Paid', true, /𝐏𝐚𝐢𝐝/.test(grow));
   check('the gift row keeps the normal reset/activate controls', true, grow.indexOf('status_update') >= 0);
   check('the gift row keeps Add IP', true, grow.indexOf('modal-ip' + g1.id) >= 0);
@@ -634,15 +650,13 @@ function snapshot() {
   check('it is owed to the parent', userOf(KPT_SUPER).id, rb && rb.receiver_id);
   check('and carries the seller price', price, rb && Number(rb.amount));
 
-  // The whole trail: key name plus a Renew badge on both money pages.
-  const renewHist = (await sell.get('/payment_history')).html;
+  // The whole trail: key name on the parent's list modals, plus a Renew badge
+  // on the seller's /transaction ledger.
+  const renewHist = (await up.get('/all_seller')).html;
   const renewTrans = (await sell.get('/transaction')).html;
-  check('payment history names the renewed key', true, renewHist.indexOf('KPTKEYR') >= 0);
-  check('payment history carries the Renew badge', true, hasBadge(renewHist, 'info', boldText('Renew')));
+  check('the parent’s Payment History modal names the renewed key', true, renewHist.indexOf('KPTKEYR') >= 0);
   check('transaction names it too', true, renewTrans.indexOf('KPTKEYR') >= 0);
   check('transaction carries the Renew badge', true, hasBadge(renewTrans, 'info', boldText('Renew')));
-  check('the parent’s board shows the renewal', true,
-    (await up.get('/payment_history')).html.indexOf('KPTKEYR') >= 0);
 
   // The parent receives the renewal money like any other due.
   await up.post('/accept_payment', { sender_id: String(userOf(KPT_SELLER).id), amount: String(price) });
@@ -729,12 +743,12 @@ function snapshot() {
   check('the old seller’s due came back down', panelDue, dueOf(KPT_SELLER));
   check('the new seller now carries the pending due', dueSL2 + price, dueOf(KPT_SELLER2));
 
-  // The old panel's histories lose the key; the new panel's gain it.
+  // The old panel's ledger loses the key; the new panel's gains it. (Both
+  // sellers' history modals live on the same parent list page, so the move is
+  // proven per panel on /transaction and in the bill rows above.)
   check('the old seller has no bill for the key', 0, billRows(KPT_SELLER).filter(r => r.key_name === 'KPTKEYT').length);
   check('the new seller has the bill', 1, billRows(KPT_SELLER2).filter(r => r.key_name === 'KPTKEYT').length);
-  check('the old seller’s payment history lost it', false, (await sell.get('/payment_history')).html.indexOf('KPTKEYT') >= 0);
   check('the old seller’s transaction lost it', false, (await sell.get('/transaction')).html.indexOf('KPTKEYT') >= 0);
-  check('the new seller’s payment history shows it', true, (await sell2.get('/payment_history')).html.indexOf('KPTKEYT') >= 0);
   check('the new seller’s transaction shows it', true, (await sell2.get('/transaction')).html.indexOf('KPTKEYT') >= 0);
   check('the old seller’s key list lost it', false, (await sell.get('/all_key')).html.indexOf('KPTKEYT') >= 0);
   check('the new seller’s key list shows it', true, (await sell2.get('/all_key')).html.indexOf('KPTKEYT') >= 0);
@@ -771,10 +785,10 @@ function snapshot() {
   // delete nulls the key ids: give each ancestor its due back and drop the row,
   // restoring the owner's balances exactly.
   const ancestorBills = store.all(
-    `SELECT p.* FROM payments p JOIN keys k ON k.id = p.key_id
-      WHERE k.key_name LIKE 'KPT%' AND p.kind = 'due'
-        AND p.sender_id NOT IN (SELECT id FROM users WHERE username LIKE 'KPT%')`
-  );
+    `SELECT * FROM payments
+      WHERE kind = 'due'
+        AND sender_id NOT IN (SELECT id FROM users WHERE username LIKE 'KPT%')`
+  ).filter(function (p) { return !startBillIds.has(p.id); });
   for (const b of ancestorBills) {
     if (b.status === 'Pending') store.run('UPDATE users SET due = MAX(due - ?, 0) WHERE id = ?', [Number(b.amount), b.sender_id]);
     store.run('DELETE FROM payments WHERE id = ?', [b.id]);

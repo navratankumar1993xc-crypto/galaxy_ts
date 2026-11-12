@@ -58,7 +58,7 @@ node scripts/check_chain.js chainbilled
 DUE=$(node -e "const s=require('./db');console.log(s.scalar(\"SELECT due FROM users WHERE username='CHAINSL'\"))")
 printf '  seller due                     -> %s\n' "$DUE"
 curl -s -b "$(jar CHAINSL)" -o /dev/null -w '  POST /send_payment -> %{http_code}\n' -X POST -d "amount=$DUE" $B/send_payment
-curl -s -b "$(jar CHAINSUP)" $B/payment_history -o "$T/ph_chain.html"
+curl -s -b "$(jar CHAINSUP)" $B/all_seller -o "$T/ph_chain.html"
 node scripts/check_chain.js pending
 SENDER=$(node -e "const s=require('./db');console.log(s.scalar(\"SELECT id FROM users WHERE username='CHAINSL'\"))")
 curl -s -b "$(jar CHAINSUP)" -o /dev/null -w '  POST /accept_payment -> %{http_code}\n' -X POST -d "sender_id=$SENDER&amount=$DUE" $B/accept_payment

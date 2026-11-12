@@ -8,7 +8,7 @@
     "db:seed": "node db/seed.js",
     "db:demo": "node db/seed.js --demo",
     "db:reset": "node db/reset.js",
-    "check": "node scripts/check_demo.js && node scripts/check_keypay.js && node scripts/check_money.js && node scripts/check_pages.js && node scripts/check_directlogin.js",
+    "check": "node scripts/run_checks.js",
     "vendor": "node scripts/vendor.js"
   },
   "keywords": [],

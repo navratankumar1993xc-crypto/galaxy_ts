@@ -4,7 +4,8 @@ const users = require('./queries/users');
 const prices = require('./queries/prices');
 const keys = require('./queries/keys');
 const tickets = require('./queries/tickets');
-const { BRAND, ROLES, CHAIN_TIERS, bold, boldText, inr, ASSET_VERSION, ROOT } = require('./config');
+const news = require('./queries/news');
+const { BRAND, ROLES, CHAIN_TIERS, bold, boldText, inr, dateLabel, ASSET_VERSION, ROOT } = require('./config');
 const fs = require('fs');
 const path = require('path');
 const { menuFor } = require('./menu');
@@ -41,6 +42,8 @@ function locals(req, res, next) {
   res.locals.brandBold = bold;
   res.locals.boldText = boldText;
   res.locals.inr = inr;
+  // "14 Dec 2026" — the key table's Expiry cell prints dates this way.
+  res.locals.dateLabel = dateLabel;
   res.locals.path = req.path;
   res.locals.assetV = ASSET_VERSION;
   // The login stylesheet carries its own cache-buster: its mtime is read per
@@ -71,9 +74,15 @@ function locals(req, res, next) {
     });
   res.locals.scripts = '';
   res.locals.flash = req.session.flash || [];
+  if (res.locals.flash.some(function (message) {
+    return !!message.loginDetails || !!message.paymentReceipt;
+  })) {
+    res.set('Cache-Control', 'no-store');
+  }
   req.session.flash = [];
   if (me) {
     res.locals.roleName = (ROLES[me.role] || { label: me.role }).label;
+    res.locals.tickerNews = news.latestTickerFor(me.role);
     res.locals.menu = menuFor(me.role);
     res.locals.settings = prices.all();
     // The heading strip is the same on every page of the reference build.

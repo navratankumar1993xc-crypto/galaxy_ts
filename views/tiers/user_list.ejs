@@ -51,6 +51,7 @@
                   <th>Reset Password</th>
                   <th>Status</th>
                   <th>Dues</th>
+                  <% if (showReceive) { %><th>Payment</th><% } %>
                   <th>Role</th>
                   <th>Created By</th>
                   <% if (showDelete) { %><th>Delete</th><% } %>
@@ -59,7 +60,9 @@
               <tbody>
                 <% rows.forEach(function (u) { %>
                   <tr>
-                    <td><%= u.username %></td>
+                    <td>
+                      <strong><%= u.username %></strong>
+                    </td>
                     <% if (showDirectLogin) { %>
                       <td>
                         <% /* One click enters this panel's dashboard as that user,
@@ -99,6 +102,26 @@
                              ever created on it, so its row always reads 0. */ %>
                       <%= u.role === 'controller' ? 0 : u.due %>
                     </td>
+                    <% if (showReceive) { %>
+                      <td>
+                        <% /* Receive Hierarchy: the two payment buttons appear only
+                               in front of the tier directly below this login (the
+                               only panel whose payment it may receive). Every other
+                               row prints a dash; the backend refuses them anyway. */ %>
+                        <% if (u.canReceive) { %>
+                          <button type="button" class="btn btn-success btn-sm"
+                                  data-toggle="modal" data-target="#modal-receive-<%= u.id %>">
+                            <i class="fas fa-hand-holding-dollar mr-1"></i> <%= boldText('Receive Payment') %>
+                          </button>
+                          <button type="button" class="btn btn-info btn-sm"
+                                  data-toggle="modal" data-target="#modal-payhist-<%= u.id %>">
+                            <i class="fas fa-clock-rotate-left mr-1"></i> <%= boldText('Payment History') %>
+                          </button>
+                        <% } else { %>
+                          <span class="text-muted">—</span>
+                        <% } %>
+                      </td>
+                    <% } %>
                     <td><%= u.role %></td>
                     <td><%= u.createdByLabel %></td>
                     <% if (showDelete) { %>
@@ -182,8 +205,229 @@
         </div>
       <% }) } %>
 
+      <!-- Receive Payment + Payment History modals, one pair per row this login
+           may receive from (its direct-child tier). The receive form posts to
+           /accept_payment, which re-checks sender.parent_id === me.id on the
+           server, so a hand-made post for any other panel is refused. -->
+      <% rows.filter(function (u) { return u.canReceive; }).forEach(function (u) { %>
+        <div class="modal fade" id="modal-receive-<%= u.id %>" tabindex="-1" role="dialog" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+              <div class="modal-header" style="background: #10b981; color: #fff;">
+                <h4 class="modal-title" style="color: #fff;"><%= boldText('Receive Payment') %> — <%= u.username %></h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: #fff; opacity: 1;">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <form action="/accept_payment" method="post">
+                <div class="modal-body">
+                  <input type="hidden" name="sender_id" value="<%= u.id %>">
+                  <p style="font-size: 13px; color: #475569;">
+                    <i class="fas fa-sitemap mr-1"></i>
+                    You receive only from <b><%= u.username %></b> (the panel directly below you).
+                    Pending key payments: <b><%= u.pendingRows.filter(function (p) { return p.key_id; }).length %></b>.
+                    Current due: <b><%= inr(u.due) %></b>.
+                  </p>
+                  <% if (u.pendingRows.length) { %>
+                    <div style="max-height: <%= u.pendingRows.length > 3 ? '140px' : 'none' %>; overflow-y: <%= u.pendingRows.length > 3 ? 'auto' : 'visible' %>; border-radius: 8px; margin-bottom: 8px;">
+                      <table class="table table-sm table-bordered mb-0">
+                        <thead>
+                          <tr>
+                            <th style="position: sticky; top: 0; z-index: 1; background: #f2efe9;">#</th>
+                            <th style="position: sticky; top: 0; z-index: 1; background: #f2efe9;">Amount</th>
+                            <th style="position: sticky; top: 0; z-index: 1; background: #f2efe9;">Key</th>
+                            <th style="position: sticky; top: 0; z-index: 1; background: #f2efe9;">Sent</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <% u.pendingRows.forEach(function (p, index) { %>
+                            <tr>
+                              <td><%= index + 1 %></td>
+                              <td><%= inr(p.amount) %></td>
+                              <td><%= p.key_name || '—' %></td>
+                              <td><%= String(p.send_date).slice(0, 10).split('-').reverse().join('-') %></td>
+                            </tr>
+                          <% }) %>
+                        </tbody>
+                      </table>
+                    </div>
+                  <% } else { %>
+                    <p class="text-muted" style="font-size: 13px;">No pending payment from this panel.</p>
+                  <% } %>
+                  <input type="number" name="amount" min="1" step="1" class="form-control"
+                         value="<%= u.pendingRows.reduce(function (total, p) { return total + Number(p.amount || 0); }, 0) || '' %>"
+                         placeholder="Amount to receive (or use Receive All)" required>
+                </div>
+                <div class="modal-footer justify-content-between">
+                  <button type="button" class="btn btn-default" data-dismiss="modal"><%= boldText('Close') %></button>
+                  <div>
+                    <button type="submit" name="all" value="1" formnovalidate class="btn btn-warning">
+                      <%= boldText('Receive All') %>
+                    </button>
+                    <button type="submit" class="btn btn-success"><%= boldText('Receive') %></button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal fade" id="modal-payhist-<%= u.id %>" tabindex="-1" role="dialog" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+              <div class="modal-header" style="background: #0ea5e9; color: #fff;">
+                <h4 class="modal-title" style="color: #fff;"><%= boldText('Payment History') %> — <%= u.username %></h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: #fff; opacity: 1;">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <% if (u.historyGroups.length) { %>
+                  <div style="max-height: <%= u.historyGroups.length > 5 ? '320px' : 'none' %>; overflow-y: <%= u.historyGroups.length > 5 ? 'auto' : 'visible' %>; border: 1px solid var(--line); border-radius: 8px;">
+                    <table class="table table-sm table-bordered table-striped mb-0">
+                      <thead>
+                        <tr>
+                          <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">S.No.</th>
+                          <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">Date</th>
+                          <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">Status</th>
+                          <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">Total Amount</th>
+                          <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">Total Keys</th>
+                          <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">Details</th>
+                          <th style="position: sticky; top: 0; z-index: 1; background: var(--card);">PDF</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% u.historyGroups.forEach(function (group, index) { %>
+                          <tr>
+                            <td><%= index + 1 %></td>
+                            <td>
+                              <%= group.date.split('-').reverse().join('-') %>
+                              <% if (group.receivedAt) { %>
+                                <small class="d-block text-muted"><%= String(group.receivedAt).slice(11) %></small>
+                              <% } %>
+                            </td>
+                            <td><%= group.status === 'Success' ? 'Received' : group.status %></td>
+                            <td><%= inr(group.totalAmount) %></td>
+                            <td><%= group.totalKeys %></td>
+                            <td>
+                              <details>
+                                <summary style="cursor: pointer; color: #0c84c6; font-weight: 700;">More Details</summary>
+                                <div class="table-responsive mt-2">
+                                  <table class="table table-sm table-bordered mb-0">
+                                    <thead>
+                                      <tr><th>#</th><th>Key</th><th>Amount</th><th>Type</th><th>Reference</th><th>Sent</th><th>Received</th><th>Receipt</th></tr>
+                                    </thead>
+                                    <tbody>
+                                      <% group.payments.forEach(function (p, paymentIndex) { %>
+                                        <tr>
+                                          <td><%= paymentIndex + 1 %></td>
+                                          <td><%= p.key_name || (p.kind === 'due' ? 'Key removed' : 'Direct payment') %><%= p.is_renew ? ' (Renewal)' : '' %></td>
+                                          <td><%= inr(p.amount) %></td>
+                                          <td><%= p.kind === 'due' ? 'Key due' : 'Direct payment' %></td>
+                                          <td><%= p.id %></td>
+                                          <td><%= p.send_date %></td>
+                                          <td><%= p.received_date || '—' %></td>
+                                          <td><a href="/receipt?id=<%= p.id %>" target="_blank" rel="noopener">Receipt</a></td>
+                                        </tr>
+                                      <% }) %>
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </details>
+                            </td>
+                            <td>
+                              <button type="button" class="btn btn-danger btn-sm"
+                                      data-payment-history-export="<%= u.id %>"
+                                      data-payment-history-index="<%= index %>"
+                                      data-payment-history-name="<%= u.username %>">
+                                <i class="fas fa-file-pdf"></i> PDF
+                              </button>
+                            </td>
+                          </tr>
+                        <% }) %>
+                      </tbody>
+                    </table>
+                  </div>
+                  <script type="application/json" id="payment-history-data-<%= u.id %>"><%- JSON.stringify(u.historyGroups).replace(/</g, '\\u003c') %></script>
+                <% } else { %>
+                  <p class="text-muted mb-0" style="font-size: 13px;">No payment record from this panel yet.</p>
+                <% } %>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal"><%= boldText('Close') %></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% }) %>
+
     </div>
   </section>
 </div>
 
+<script>
+  document.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-payment-history-export]');
+    if (!button) return;
+    if (!window.pdfMake) {
+      window.alert('PDF export is unavailable. Reload the page and try again.');
+      return;
+    }
+    var data = document.getElementById('payment-history-data-' + button.getAttribute('data-payment-history-export'));
+    if (!data) {
+      window.alert('Payment history details could not be loaded.');
+      return;
+    }
+    var groups = JSON.parse(data.textContent);
+    var group = groups[Number(button.getAttribute('data-payment-history-index'))];
+    if (!group) {
+      window.alert('Selected date details could not be loaded.');
+      return;
+    }
+    var content = [
+      { text: 'Payment History — ' + button.getAttribute('data-payment-history-name'), style: 'header' },
+      {
+        text: group.date.split('-').reverse().join('-') +
+          ' | ' + (group.status === 'Success' ? 'Received' : group.status) +
+          ' | Total: Rs ' + Number(group.totalAmount).toLocaleString('en-IN') +
+          ' | Keys: ' + group.totalKeys,
+        style: 'group',
+        margin: [0, 0, 0, 8]
+      }
+    ];
+    content.push({
+      table: {
+        headerRows: 1,
+        widths: ['auto', '*', 'auto', 'auto', 'auto', '*', '*'],
+        body: [
+          ['#', 'Key', 'Amount', 'Type', 'Reference', 'Sent', 'Received'],
+          ...group.payments.map(function (payment, paymentIndex) {
+            return [
+              String(paymentIndex + 1),
+              (payment.key_name || (payment.kind === 'due' ? 'Key removed' : 'Direct payment')) +
+                (payment.is_renew ? ' (Renewal)' : ''),
+              'Rs ' + Number(payment.amount).toLocaleString('en-IN'),
+              payment.kind === 'due' ? 'Key due' : 'Direct payment',
+              String(payment.id),
+              String(payment.send_date || ''),
+              String(payment.received_date || '')
+            ];
+          })
+        ]
+      },
+      layout: 'lightHorizontalLines',
+      margin: [0, 0, 0, 12]
+    });
+    window.pdfMake.createPdf({
+      pageOrientation: 'landscape',
+      pageMargins: [24, 28, 24, 28],
+      content: content,
+      styles: {
+        header: { fontSize: 18, bold: true, margin: [0, 0, 0, 8] },
+        group: { fontSize: 11, bold: true, margin: [0, 8, 0, 5] }
+      },
+      defaultStyle: { fontSize: 8 }
+    }).download('payment-history-' + button.getAttribute('data-payment-history-name') + '-' + group.date + '.pdf');
+  });
+</script>
 <%- include('../partials/foot', { tables: true }) %>

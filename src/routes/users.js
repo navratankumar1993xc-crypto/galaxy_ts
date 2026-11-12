@@ -1,8 +1,10 @@
 'use strict';
 const store = require('../../db');
 const users = require('../../src/queries/users');
+const payments = require('../../src/queries/payments');
 const { ROLES, PANEL_LIST_ROUTE, boldText } = require('../../src/config');
 const { subtreeIds } = require('../../src/queries/tree');
+const { siteBaseUrl } = require('../urls');
 
 // One entry per list page, matching the reference headings and card chrome.
 const LIST_PAGES = {
@@ -20,7 +22,33 @@ function back(req) {
 }
 
 function owns(me, id) {
-  return subtreeIds(me.id).includes(Number(id));
+  return !!me && subtreeIds(me.id).includes(Number(id));
+}
+
+function canViewPanelDetails(req, me, id) {
+  if (owns(me, id)) return true;
+  const controllerId = req.session && req.session.controllerUid;
+  if (!controllerId) return false;
+  const controller = users.getById(controllerId);
+  return !!controller && owns(controller, id);
+}
+
+function groupPaymentHistory(historyRows) {
+  const grouped = new Map();
+  historyRows.forEach(function (payment) {
+    const receivedAt = payment.status === 'Success' ? payment.received_date : null;
+    const date = String(receivedAt || payment.send_date).slice(0, 10);
+    const key = payment.status + '|' + (receivedAt || date);
+    let group = grouped.get(key);
+    if (!group) {
+      group = { date, receivedAt, status: payment.status, totalAmount: 0, totalKeys: 0, payments: [] };
+      grouped.set(key, group);
+    }
+    group.totalAmount += Number(payment.amount);
+    if (payment.kind === 'due' || payment.key_id !== null) group.totalKeys++;
+    group.payments.push(payment);
+  });
+  return Array.from(grouped.values());
 }
 
 // ---------------------------------------------------------------- add panel
@@ -45,7 +73,7 @@ function addSubmit(req, res) {
   const password = String(req.body.password || '');
   const role = req.body.role;
 
-  if (!username || !password) {
+  if (!username || !password.trim()) {
     req.session.flash = [{ type: 'danger', text: 'User name and password are both required.' }];
     return res.redirect('/add_user');
   }
@@ -58,15 +86,84 @@ function addSubmit(req, res) {
     return res.redirect('/add_user');
   }
 
-  users.create({
+  const id = users.create({
     username, password, role, parentId: me.id, createdBy: me.username
   });
 
+  const websiteUrl = siteBaseUrl(req) + '/login';
   req.session.flash = [{
     type: 'success',
-    text: ROLES[role].label + ' panel ' + username + ' created.'
+    text: ROLES[role].label + ' panel ' + username + ' created.',
+    loginDetails: {
+      websiteUrl,
+      username,
+      password,
+      shareMessage: [
+        ROLES[role].label + ' Panel Login Details',
+        'Website URL: ' + websiteUrl,
+        'User ID: ' + username,
+        'Password: ' + password
+      ].join('\n')
+    }
   }];
   res.redirect('/' + PANEL_LIST_ROUTE[role]);
+}
+
+function panelDetails(req, res) {
+  const me = res.locals.me;
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || !canViewPanelDetails(req, me, id)) {
+    return res.status(404).render('error', { code: 404, message: 'Panel details not found.' });
+  }
+  const panel = users.getById(id);
+  if (!panel || panel.role === 'controller') {
+    return res.status(404).render('error', { code: 404, message: 'Panel details not found.' });
+  }
+
+  const websiteUrl = siteBaseUrl(req) + '/login';
+  const password = users.getPassword(id);
+  const shareMessage = [
+    panel.role + ' Panel Login Details',
+    'Website URL: ' + websiteUrl,
+    'User ID: ' + panel.username
+  ];
+  if (password) shareMessage.push('Password: ' + password);
+
+  res.set('Cache-Control', 'no-store');
+  res.render('tiers/success', {
+    kind: 'panel',
+    created: req.query.created === '1',
+    passwordReset: req.query.password_reset === '1',
+    panel: {
+      id: panel.id,
+      username: panel.username,
+      roleName: ROLES[panel.role].label,
+      websiteUrl,
+      password,
+      shareMessage: shareMessage.join('\n'),
+      listUrl: '/' + PANEL_LIST_ROUTE[panel.role]
+    }
+  });
+}
+
+function resetPanelPassword(req, res) {
+  const me = res.locals.me;
+  const id = Number(req.params.id);
+  const password = String(req.body.new_password || '');
+  if (!Number.isSafeInteger(id) || !canViewPanelDetails(req, me, id)) {
+    return res.status(404).render('error', { code: 404, message: 'Panel details not found.' });
+  }
+  const panel = users.getById(id);
+  if (!panel || panel.role === 'controller') {
+    return res.status(404).render('error', { code: 404, message: 'Panel details not found.' });
+  }
+  if (!password.trim()) {
+    req.session.flash = [{ type: 'danger', text: 'Enter a non-blank password.' }];
+    return res.redirect('/panel_details/' + id);
+  }
+
+  users.setPassword(id, password);
+  res.redirect('/panel_details/' + id + '?password_reset=1');
 }
 
 // ---------------------------------------------------------------- list pages
@@ -92,6 +189,25 @@ function list(route) {
       u.createdByLabel = creator && creator.role === 'controller' ? ROLES.controller.label : name;
     });
 
+    // Payment Receive Hierarchy: a login receives only from the tier DIRECTLY
+    // below it (Controller←Developer, Developer←Super Master, … Super Seller←
+    // Seller). ROLES[me].next is exactly that tier, so the Receive Payment and
+    // Payment History buttons appear only in front of those rows. The backend
+    // (/accept_payment) re-checks sender.parent_id === me.id, so hiding the
+    // button is never the only gate.
+    const receiveRole = ROLES[me.role].next || null;
+    rows.forEach(function (u) {
+      u.pendingRows = [];
+      u.historyRows = [];
+      u.historyGroups = [];
+      if (receiveRole && u.role === receiveRole && u.parent_id === me.id) {
+        u.canReceive = true;
+        u.pendingRows = payments.pendingFrom(u.id, me.id);
+        u.historyRows = payments.between(u.id, me.id);
+        u.historyGroups = groupPaymentHistory(u.historyRows);
+      }
+    });
+
     res.render('tiers/user_list', {
       heading: boldText(cfg.heading),
       headKind: cfg.headKind,
@@ -103,7 +219,10 @@ function list(route) {
       // Direct Login is the controller's alone: it steps into any panel below it
       // without that panel's password. While impersonating, the active role is
       // the target's (not controller), so the button disappears on its own.
-      showDirectLogin: me.role === 'controller'
+      showDirectLogin: me.role === 'controller',
+      // The receive column only exists where at least one row is the viewer's
+      // direct-child tier; a page of deeper tiers shows no receive controls.
+      showReceive: rows.some(function (u) { return u.canReceive; })
     });
   };
 }
@@ -245,4 +364,7 @@ function backToController(req, res) {
   });
 }
 
-module.exports = { LIST_PAGES, addForm, addSubmit, list, statusUpdate, deleteCascade, directLogin, backToController };
+module.exports = {
+  LIST_PAGES, addForm, addSubmit, panelDetails, resetPanelPassword, list, statusUpdate, deleteCascade,
+  directLogin, backToController
+};

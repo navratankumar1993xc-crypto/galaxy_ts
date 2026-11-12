@@ -15,6 +15,11 @@
 // cutoff, and the last check compares the two tables with what they held before.
 // It never calls db:reset and never signs in as one of the owner's own accounts.
 // ---------------------------------------------------------------------------
+// Writes and deletes news/price rows: only ever against the runner's throwaway DB.
+if (!process.env.GALAXY_DB) {
+  console.error('Refusing to run against the live database. Use: npm run check');
+  process.exit(1);
+}
 const BASE = process.env.GALAXY_BASE || 'http://localhost:3000';
 const store = require('../db');
 
@@ -98,6 +103,57 @@ const newsOf = (id) => store.get('SELECT * FROM news WHERE id = ?', [id]) || nul
   check('the controller deleted it', null, newsOf(row.id));
   check('nobody lists it any more', false, (await admin.get('/news')).html.includes(MARKER));
   check('the news table is back to what it held', true, newsRows() === beforeNews);
+
+  console.log('\n2a. an App News broadcast runs in every panel ticker');
+  const tickerMarker = MARKER + ' app ticker';
+  const tickerIds0 = store.scalar('SELECT COALESCE(MAX(id), 0) FROM news');
+  await admin.post('/news', { news: tickerMarker, role: 'appnews' });
+  const tickerRow = store.get(
+    'SELECT * FROM news WHERE id > ? AND body = ? ORDER BY id DESC LIMIT 1',
+    [tickerIds0, tickerMarker]
+  );
+  check('the App News broadcast was written', true, !!tickerRow);
+  check('it appears in the controller ticker', true, (await admin.get('/home')).html.includes(tickerMarker));
+  check('it appears in the seller ticker', true, (await sell.get('/home')).html.includes(tickerMarker));
+  if (tickerRow) await admin.get('/status_update?n_id=' + tickerRow.id);
+  check('the App News test broadcast was removed', null, tickerRow && newsOf(tickerRow.id));
+
+  console.log('\n2b. an All Panels broadcast runs in every panel ticker');
+  const allPanelsMarker = MARKER + ' all panels';
+  const allPanelsIds0 = store.scalar('SELECT COALESCE(MAX(id), 0) FROM news');
+  await admin.post('/news', { news: allPanelsMarker, role: 'allpanels' });
+  const allPanelsRow = store.get(
+    'SELECT * FROM news WHERE id > ? AND body = ? ORDER BY id DESC LIMIT 1',
+    [allPanelsIds0, allPanelsMarker]
+  );
+  check('the All Panels broadcast was written', true, !!allPanelsRow);
+  check('All Panels is listed as a news target', true, (await admin.get('/news')).html.includes('All Panels'));
+  check('it appears in the controller ticker', true, (await admin.get('/home')).html.includes(allPanelsMarker));
+  const allPanelsSellerHome = (await sell.get('/home')).html;
+  check('it appears in the seller ticker', true, allPanelsSellerHome.includes(allPanelsMarker));
+  const sellerNotice = allPanelsSellerHome.match(/<div class="notice-box[^"]*">([\s\S]*?)<\/div>/);
+  check('it appears in the seller dashboard news box', true,
+    !!sellerNotice && sellerNotice[1].includes(allPanelsMarker));
+  if (allPanelsRow) await admin.get('/status_update?n_id=' + allPanelsRow.id);
+  check('the All Panels test broadcast was removed', null, allPanelsRow && newsOf(allPanelsRow.id));
+
+  console.log('\n2c. every tier can send Personal news to all panels');
+  const personalMarker = MARKER + ' personal broadcast';
+  const personalIds0 = store.scalar('SELECT COALESCE(MAX(id), 0) FROM news');
+  const sellerNewsPage = await sell.get('/news');
+  check('Personal is available to a seller', true, sellerNewsPage.html.includes('>Personal</option>'));
+  await sell.post('/news', { news: personalMarker, role: 'personal' });
+  const personalRow = store.get(
+    'SELECT * FROM news WHERE id > ? AND body = ? ORDER BY id DESC LIMIT 1',
+    [personalIds0, personalMarker]
+  );
+  check('the Personal broadcast uses the shared target', 'personal', personalRow && personalRow.target_role);
+  check('it appears in the controller ticker', true, (await admin.get('/home')).html.includes(personalMarker));
+  check('it appears in the seller ticker', true, (await sell.get('/home')).html.includes(personalMarker));
+  check('it appears in the seller dashboard news box', true,
+    (await sell.get('/home')).html.includes(personalMarker));
+  if (personalRow) await admin.get('/status_update?n_id=' + personalRow.id);
+  check('the Personal test broadcast was removed', null, personalRow && newsOf(personalRow.id));
 
   // =============================================================== 3. set_price
   console.log('\n3. a price row deletes and comes back identical');

@@ -10,6 +10,12 @@
 // duplicated allow_demo field the reference markup posts (hidden 0 + checkbox 1),
 // which is the shape that used to break the switch.
 // ---------------------------------------------------------------------------
+// This suite writes and deletes keys, so it must never run against the owner's
+// working database. npm run check points GALAXY_DB at a throwaway copy.
+if (!process.env.GALAXY_DB) {
+  console.error('Refusing to run against the live database. Use: npm run check');
+  process.exit(1);
+}
 const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -18,7 +24,7 @@ const panelKeys = require('../src/queries/keys');
 const { boldText } = require('../src/config');
 
 const T = process.env.TEMP || '/tmp';
-const B = 'http://localhost:3000';
+const B = process.env.GALAXY_BASE || 'http://localhost:3000';
 let fails = 0;
 const created = [];
 

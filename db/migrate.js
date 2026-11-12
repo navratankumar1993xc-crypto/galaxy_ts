@@ -84,6 +84,11 @@ function rebuild(db, table, indexes) {
 function upgrade(db) {
   const done = [];
 
+  if (hasTable(db, 'users') && !columns(db, 'users').includes('password_encrypted')) {
+    db.exec('ALTER TABLE users ADD COLUMN password_encrypted TEXT');
+    done.push('users.password_encrypted added');
+  }
+
   if (hasTable(db, 'keys') && !columns(db, 'keys').includes('super_seller_id')) {
     db.exec('ALTER TABLE keys ADD COLUMN super_seller_id INTEGER REFERENCES users(id) ON DELETE SET NULL');
     done.push('keys.super_seller_id added');
@@ -111,6 +116,25 @@ function upgrade(db) {
   if (hasTable(db, 'keys') && !columns(db, 'keys').includes('renew_pending')) {
     db.exec('ALTER TABLE keys ADD COLUMN renew_pending INTEGER NOT NULL DEFAULT 0');
     done.push('keys.renew_pending added');
+  }
+
+  // Pair limits: the client software reads them from /api/limits and the
+  // controller edits them on /pair_limits. Defaults match the software's own
+  // fallback (ApplyDefaultLimits), so an old key behaves exactly as before.
+  if (hasTable(db, 'keys')) {
+    const lim = columns(db, 'keys');
+    if (!lim.includes('limit_total')) {
+      db.exec('ALTER TABLE keys ADD COLUMN limit_total INTEGER NOT NULL DEFAULT 2');
+      done.push('keys.limit_total added');
+    }
+    if (!lim.includes('limit_app')) {
+      db.exec('ALTER TABLE keys ADD COLUMN limit_app INTEGER NOT NULL DEFAULT 2');
+      done.push('keys.limit_app added');
+    }
+    if (!lim.includes('limit_beta')) {
+      db.exec('ALTER TABLE keys ADD COLUMN limit_beta INTEGER NOT NULL DEFAULT 1');
+      done.push('keys.limit_beta added');
+    }
   }
 
   if (hasTable(db, 'users') && !/super_seller/.test(storedSql(db, 'users'))) {

@@ -1,6 +1,7 @@
 'use strict';
 const bcrypt = require('bcryptjs');
 const store = require('../../db');
+const credentials = require('../credentials');
 const { ROLES, ROLE_ORDER } = require('../config');
 const { subtreeIds, inClause } = require('./tree');
 
@@ -9,7 +10,8 @@ function listByRole(rootId, role) {
   // that role anywhere in the tree while a mid tier only sees its own branch.
   const { sql, params } = inClause(subtreeIds(rootId));
   return store.all(
-    `SELECT u.*, p.username AS parent_name
+    `SELECT u.id, u.username, u.role, u.parent_id, u.due, u.status, u.closed_at,
+            u.created_by, u.created_at, p.username AS parent_name
        FROM users u LEFT JOIN users p ON p.id = u.parent_id
       WHERE u.role = ? AND u.id IN (${sql})
       ORDER BY u.id`,
@@ -23,7 +25,8 @@ function listAllInSubtree(rootId) {
   const ids = subtreeIds(rootId);
   const { sql, params } = inClause(ids);
   return store.all(
-    `SELECT u.*, p.username AS parent_name
+    `SELECT u.id, u.username, u.role, u.parent_id, u.due, u.status, u.closed_at,
+            u.created_by, u.created_at, p.username AS parent_name
        FROM users u LEFT JOIN users p ON p.id = u.parent_id
       WHERE u.id IN (${sql})
       ORDER BY u.id`,
@@ -33,6 +36,11 @@ function listAllInSubtree(rootId) {
 
 function getById(id) {
   return store.get('SELECT * FROM users WHERE id = ?', [id]);
+}
+
+function getPassword(id) {
+  const row = store.get('SELECT password_encrypted FROM users WHERE id = ?', [id]);
+  return row ? credentials.decrypt(row.password_encrypted) : null;
 }
 
 // Case-insensitive name lookup, the same collation the login uses, so a
@@ -45,15 +53,19 @@ function create({ username, password, role, parentId, createdBy }) {
   // Creating a panel never bills it: every new login starts with due 0. Role
   // prices are used only later, when a parent marks one of its keys Paid.
   const info = store.run(
-    `INSERT INTO users (username, password_hash, role, parent_id, due, status, created_by)
-     VALUES (?,?,?,?,0, 'active', ?)`,
-    [String(username).trim(), bcrypt.hashSync(String(password), 8), role, parentId, createdBy]
+    `INSERT INTO users (username, password_hash, password_encrypted, role, parent_id, due, status, created_by)
+     VALUES (?,?,?,?,?,0, 'active', ?)`,
+    [String(username).trim(), bcrypt.hashSync(String(password), 8), credentials.encrypt(password),
+      role, parentId, createdBy]
   );
   return Number(info.lastInsertRowid);
 }
 
 function setPassword(id, password) {
-  store.run('UPDATE users SET password_hash = ? WHERE id = ?', [bcrypt.hashSync(String(password), 8), id]);
+  store.run(
+    'UPDATE users SET password_hash = ?, password_encrypted = ? WHERE id = ?',
+    [bcrypt.hashSync(String(password), 8), credentials.encrypt(password), id]
+  );
 }
 
 function verify(username, password) {
@@ -103,6 +115,6 @@ function childRolesOf(role) {
 }
 
 module.exports = {
-  listByRole, listAllInSubtree, getById, getByUsername, create, setPassword, verify, remove,
+  listByRole, listAllInSubtree, getById, getPassword, getByUsername, create, setPassword, verify, remove,
   setStatus, addDue, subDue, descendantIds, childRolesOf, roleLabel: r => (ROLES[r] || {}).label || r
 };

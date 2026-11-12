@@ -21,7 +21,7 @@ const B = 'http://localhost:3000';
 
 const PAGES = ['home', 'add_user', 'all_user', 'all_developer_panels', 'all_super_master_admins',
   'all_master_admins', 'all_admins', 'all_seller', 'all_key', 'transaction', 'set_price',
-  'news', 'reports', 'token_stats', 'payment_history', 'today_result', 'top_result'];
+  'news', 'reports', 'token_stats', 'today_result', 'top_result'];
 
 // Words that legitimately differ: the clone is renamed, and the reference data
 // belongs to another customer.

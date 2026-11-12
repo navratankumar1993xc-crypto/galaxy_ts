@@ -7,7 +7,9 @@ const prices = require('../queries/prices');
 const FIELDS = [
   { key: 'setup_link',   label: 'Setup Link',   icon: 'fas fa-cogs',       hint: 'Software setup download link' },
   { key: 'updater_link', label: 'Updater Link', icon: 'fas fa-sync-alt',   hint: 'Software updater download link' },
-  { key: 'apk_link',     label: 'APK Link',     icon: 'fas fa-mobile-alt', hint: 'Mobile APK download link' }
+  { key: 'apk_link',     label: 'APK Link',     icon: 'fas fa-mobile-alt', hint: 'Mobile APK download link' },
+  { key: 'apk_app_link', label: 'APK Link (Server 1 / App)', icon: 'fas fa-qrcode', hint: 'Token Manager QR for the Server-1 (App) APK' },
+  { key: 'apk_beta_link',label: 'APK Link (Beta)',           icon: 'fas fa-qrcode', hint: 'Token Manager QR for the Beta APK' }
 ];
 
 function flash(req, type, text) {

@@ -20,11 +20,53 @@
 body {
   background: var(--bg) !important;
   color: var(--ink) !important;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .content-wrapper,
 .wrapper {
   background: transparent !important;
+}
+
+/* ── NO-PAGE-SCROLL SHELL ──
+   The wrapper is exactly one viewport tall: ticker navbar on top, footer at
+   the bottom, and only the content between them scrolls when a page is taller
+   than the screen. A page that fits (the dashboard) shows no scrollbar at all
+   — the document itself never scrolls ("scroll nahin hona chahie"). AdminLTE's
+   content min-height assumed a 57px footer and still overflowed by the extra
+   footer padding, which is what produced the stray scrollbar. */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.wrapper > * {
+  flex: 0 0 auto;
+}
+.wrapper > .content-wrapper {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  overflow-y: auto;
+}
+@media print {
+  /* Paper is not a viewport: let the receipt flow over as many pages as it needs. */
+  body {
+    height: auto;
+    overflow: visible;
+  }
+  .wrapper {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+  .wrapper > .content-wrapper {
+    overflow: visible;
+  }
 }
 
 /* ── TOP NAVBAR ── */
@@ -147,11 +189,16 @@ body {
    arrows removed because they were eating the digits. */
 .demo-days-row {
   display: flex;
+  /* Two lines inside the sidebar: the caption on top, the box + Save under it.
+     One line overflowed the sidebar width and clipped the Save button. */
+  flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
+  gap: 6px 7px;
   padding-left: 18px;
+  padding-right: 10px;
 }
 .demo-days-caption {
+  flex: 0 0 100%;
   font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.6px;
@@ -195,12 +242,15 @@ body {
 }
 .demo-days-save {
   height: 32px;
-  width: 34px;
-  padding: 0;
+  /* Icon + the visible "Save" name: size to the text, not a fixed icon box. */
+  width: auto;
+  padding: 0 10px;
+  gap: 5px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 13px;
+  white-space: nowrap;
   color: #fff !important;
   background: #2e7d32 !important;
   border: 1.5px solid #2e7d32 !important;
@@ -383,6 +433,10 @@ body {
   font-weight: 800 !important;
   color: var(--ink) !important;
   border-radius: 14px 14px 0 0 !important;
+  /* Without inner padding the head icon and the body content sit flush on the
+     card border and the rounded corners clip them ("side se cut kar aa raha
+     hai"). Pages that want a different inset set it inline and win over this. */
+  padding: 12px 18px;
 }
 .card-title,
 .dash-title { 
@@ -397,6 +451,7 @@ body {
 }
 .dash-card-body {
   color: var(--ink) !important;
+  padding: 16px 18px;
 }
 
 /* ── TABLE ── */

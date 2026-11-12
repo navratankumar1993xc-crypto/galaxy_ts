@@ -15,9 +15,14 @@
 // and deletes that branch again at the end; the last assertion is that every row
 // it did not create is still there, value for value.
 // ---------------------------------------------------------------------------
+// Writes and deletes panels/payments: only ever against the runner's throwaway DB.
+if (!process.env.GALAXY_DB) {
+  console.error('Refusing to run against the live database. Use: npm run check');
+  process.exit(1);
+}
 const BASE = process.env.GALAXY_BASE || 'http://localhost:3000';
 const store = require('../db');
-const { boldText } = require('../src/config');
+const { boldText, inr } = require('../src/config');
 
 const SEED = { user: 'YOGIMASTER', pass: 'demo123' };   // master_admin, seeded
 const ADMIN = 'MNYADM';        // admin         -> makes the super seller
@@ -145,10 +150,11 @@ function snapshot() {
   // one, so the fixture charges the seller the way a key bill would.
   require('../src/queries/users').addDue(userOf(SELLER).id, sellerPrice);
 
-  const ph = (await sellJ.get('/payment_history')).html;
-  console.log('\n2. the payer sees what it owes and a way to send it');
-  check('its page carries the Send Payment field', true, /name="amount"/.test(ph));
-  check('the field starts at the whole due', true, ph.includes('value="' + sellerPrice + '"'));
+  console.log('\n2. the old DUE REVISED PAYMENT page is gone for good');
+  // The sidebar entry and the whole /payment_history page were removed; money
+  // is received on the parent's panel list and read on /transaction.
+  check('the route no longer exists', 404, (await sellJ.get('/payment_history')).status);
+  check('the sidebar no longer lists it', true, !(await sellJ.get('/home')).html.includes('DUE REVISED PAYMENT'));
 
   console.log('\n3. a partial transfer goes Pending and does not touch the due');
   await sellJ.post('/send_payment', { amount: String(half) });
@@ -157,10 +163,12 @@ function snapshot() {
   check('its status', 'Pending', pending[0] && pending[0].status);
   check('its amount', half, pending[0] && Number(pending[0].amount));
   check('the due is untouched until the parent accepts', sellerPrice, dueOf(SELLER));
-  check('the payer page reads Pending', true, hasBadge((await sellJ.get('/payment_history')).html, 'warning', boldText('Pending')));
+  check('the payer ledger reads Pending', true, hasBadge((await sellJ.get('/transaction')).html, 'warning', boldText('Pending')));
 
   console.log('\n4. the parent sees the payer and can accept it');
-  const board = (await superJ.get('/payment_history')).html;
+  // Receive lives on the parent's direct-child list: the seller row there
+  // carries the Receive Payment modal (sender_id + all=1).
+  const board = (await superJ.get('/all_seller')).html;
   check('Accept names this payer', true, board.includes('name="sender_id" value="' + userOf(SELLER).id + '"'));
   check('1-Click Accept is offered too', true, board.includes('name="all" value="1"'));
 
@@ -173,12 +181,19 @@ function snapshot() {
   console.log('\n6. the parent accepts: the transfer settles and the due falls');
   await superJ.post('/accept_payment', { sender_id: String(userOf(SELLER).id), amount: String(half) });
   const done1 = rows(SELLER, SUPER);
+  const singleReceiptPage = (await superJ.get('/all_seller')).html;
+  const singleShareHref = (singleReceiptPage.match(/href="(https:\/\/wa\.me\/\?text=[^"]+)"/) || [])[1] || '';
+  const singleShareMessage = singleShareHref ? decodeURIComponent(singleShareHref.split('?text=')[1]) : '';
   check('still one row for that transfer', 1, done1.length);
   check('it is Success', 'Success', done1[0] && done1[0].status);
   check('and dated', true, !!(done1[0] && done1[0].received_date));
   check('the due dropped by what arrived', sellerPrice - half, dueOf(SELLER));
-  check('the payer page reads Done', true,
-    hasBadge((await sellJ.get('/payment_history')).html, 'success', boldText('Done') + ' &#9989;'));
+  check('single acceptance offers a WhatsApp receipt', true, singleShareHref.includes('wa.me/?text='));
+  check('single WhatsApp message contains only payment, payer and total', true,
+    singleShareMessage === 'Payment received\nFrom: ' + SELLER + '\nTotal: ' + inr(half));
+  check('single WhatsApp message omits receipt links', false, singleShareMessage.includes('/receipt?id='));
+  check('the payer ledger reads Success', true,
+    hasBadge((await sellJ.get('/transaction')).html, 'success', boldText('Success')));
 
   console.log('\n7. the balance goes through 1-Click Accept');
   const rest = sellerPrice - half;
@@ -186,8 +201,15 @@ function snapshot() {
   check('two transfers now', 2, rows(SELLER, SUPER).length);
   await superJ.post('/accept_payment', { sender_id: String(userOf(SELLER).id), all: '1' });
   const done2 = rows(SELLER, SUPER);
+  const allReceiptPage = (await superJ.get('/all_seller')).html;
+  const allShareHref = (allReceiptPage.match(/href="(https:\/\/wa\.me\/\?text=[^"]+)"/) || [])[1] || '';
+  const allShareMessage = allShareHref ? decodeURIComponent(allShareHref.split('?text=')[1]) : '';
   check('both settled', 'Success,Success', done2.map(r => r.status).join(','));
   check('the due is cleared', 0, dueOf(SELLER));
+  check('Receive All offers a WhatsApp message', true, allShareHref.includes('wa.me/?text='));
+  check('Receive All WhatsApp message contains only payment, payer and total', true,
+    allShareMessage === 'Payment received\nFrom: ' + SELLER + '\nTotal: ' + inr(rest));
+  check('Receive All WhatsApp message omits receipt links', false, allShareMessage.includes('/receipt?id='));
   check('nothing left to accept', 0, store.scalar(
     `SELECT COUNT(*) FROM payments p WHERE p.sender_id = ? AND p.status = 'Pending'`, [userOf(SELLER).id]));
 
@@ -211,6 +233,65 @@ function snapshot() {
   check('the receipt carries the received date', true, rc.html.includes(String(done2[0].received_date).slice(0, 10)));
   check('the controller keeps final control', 200, (await ctrlJ.get('/receipt?id=' + pid)).status);
   check('a stranger is refused', true, (await outJ.get('/receipt?id=' + pid)).status !== 200);
+
+  console.log('\n8c. the suggested total accepts all matching pending rows');
+  const sellerId = userOf(SELLER).id;
+  require('../src/queries/users').addDue(sellerId, 700);
+  await sellJ.post('/send_payment', { amount: '350' });
+  await sellJ.post('/send_payment', { amount: '350' });
+  const multiPending = rows(SELLER, SUPER).filter(function (p) { return p.status === 'Pending'; });
+  const receivePage = (await superJ.get('/all_seller')).html;
+  check('the amount field suggests the pending total', true,
+    /name="amount"[^>]*value="700"/.test(receivePage));
+  await superJ.post('/accept_payment', { sender_id: String(sellerId), amount: '700' });
+  const multiAccepted = rows(SELLER, SUPER).filter(function (p) {
+    return multiPending.some(function (pendingPayment) { return pendingPayment.id === p.id; });
+  });
+  const sharedPage = (await superJ.get('/all_seller')).html;
+  const shareHref = (sharedPage.match(/href="(https:\/\/wa\.me\/\?text=[^"]+)"/) || [])[1] || '';
+  const shareMessage = shareHref ? decodeURIComponent(shareHref.split('?text=')[1]) : '';
+  check('both matching payments are accepted', 'Success,Success', multiAccepted.map(function (p) { return p.status; }).join(','));
+  check('their due is cleared', 0, dueOf(SELLER));
+  const multiTotal = multiAccepted.reduce(function (sum, p) { return sum + Number(p.amount); }, 0);
+  check('the WhatsApp message contains only payment, payer and total', true,
+    shareMessage === 'Payment received\nFrom: ' + SELLER + '\nTotal: ' + inr(multiTotal));
+  check('the WhatsApp message omits receipt links', false, shareMessage.includes('/receipt?id='));
+
+  console.log('\n8d. received payment history groups payments and exports details');
+  for (let day = 1; day <= 6; day++) {
+    const date = '2026-10-' + String(day).padStart(2, '0');
+    store.run(
+      `INSERT INTO payments (sender_id, receiver_id, amount, send_date, received_date, status, kind)
+       VALUES (?, ?, 50, ?, ?, 'Success', 'payment')`,
+      [userOf(SELLER).id, userOf(SUPER).id, date + ' 10:00:00', date + ' 10:01:00']
+    );
+  }
+  for (const batch of [
+    { amount: 3000, received: '2026-09-10 10:00:00' },
+    { amount: 6000, received: '2026-09-10 18:00:00' }
+  ]) {
+    store.run(
+      `INSERT INTO payments (sender_id, receiver_id, amount, send_date, received_date, status, kind)
+       VALUES (?, ?, ?, ?, ?, 'Success', 'payment')`,
+      [userOf(SELLER).id, userOf(SUPER).id, batch.amount, batch.received, batch.received]
+    );
+  }
+  const receivingHistory = await superJ.get('/payment_receiving_history');
+  check('the receiving history route is available', 200, receivingHistory.status);
+  check('the page has the requested history title', true,
+    receivingHistory.html.includes('Payment Receiving History'));
+  check('each date has its own PDF export action', true,
+    receivingHistory.html.includes('data-payment-history-index="0"'));
+  check('the details contain the payer name', true, receivingHistory.html.includes(SELLER));
+  check('the details contain a full payment reference', true,
+    receivingHistory.html.includes(String(multiAccepted[0] && multiAccepted[0].id)));
+  check('more than five records enable inner scrolling', true,
+    receivingHistory.html.includes('max-height: 390px; overflow-y: auto;'));
+  check('same-day receive batches remain separate entries', true,
+    receivingHistory.html.includes('"totalAmount":3000') &&
+    receivingHistory.html.includes('"totalAmount":6000'));
+  check('the page is linked in the sidebar', true,
+    (await superJ.get('/home')).html.includes('href="/payment_receiving_history"'));
 
   console.log('\n9. cleanup: the MNY branch leaves the database');
   for (const root of [ADMIN, STRANGER]) {

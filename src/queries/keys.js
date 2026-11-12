@@ -82,6 +82,10 @@ function get(id) {
   return store.get(`SELECT ${SELECT_COLS} FROM keys k ${joinChain()} WHERE k.id = ?`, [id]);
 }
 
+function getByName(name) {
+  return store.get(`SELECT ${SELECT_COLS} FROM keys k ${joinChain()} WHERE k.key_name = ?`, [name]);
+}
+
 // A key may only be touched by someone in its own lineage.
 function owns(rootUser, keyId) {
   const k = get(keyId);
@@ -362,9 +366,21 @@ function inRange(rootId, from, to) {
   );
 }
 
+function pairLimitRows() {
+  return store.all(
+    `SELECT id, key_name, client_name, status, limit_total, limit_app, limit_beta
+       FROM keys ORDER BY id DESC`
+  );
+}
+
+function setPairLimits(id, total, app, beta) {
+  store.run('UPDATE keys SET limit_total = ?, limit_app = ?, limit_beta = ? WHERE id = ?',
+    [total, app, beta, id]);
+}
+
 module.exports = {
-  FILTERS, list, counts, get, owns, generate, issueDemo, nextDemoName, setClientName, transferLineage, remove, addIp, extend,
+  FILTERS, list, counts, get, getByName, owns, generate, issueDemo, nextDemoName, setClientName, transferLineage, remove, addIp, extend,
   extendAll, resetAllMac, massDelete, deletableBy, setPaid, setRenewPending, setMac, setStatus, enforceCascades,
   setValidity, logValidity, validityLog, extendedExpire, logReset, resetLog, transferLog,
-  chainColumnFor, inRange, randomKey
+  chainColumnFor, inRange, randomKey, pairLimitRows, setPairLimits
 };

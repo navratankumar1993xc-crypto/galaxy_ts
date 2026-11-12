@@ -3,6 +3,7 @@
   //   tables  -> DataTables + Buttons stack, no OverlayScrollbars
   //   core    -> OverlayScrollbars, no DataTables
   var useTables = (typeof tables !== 'undefined' && tables);
+  var usePdfExport = (typeof pdfExport !== 'undefined' && pdfExport);
 %>
 <% if (useTables) { %>
 <%   // The reference keeps the old AdminLTE footer on its DataTables pages. %>
@@ -56,10 +57,16 @@
      AdminLTE keeps its native scrollbars on these pages; matched as-is. -->
 <script src="/plugins/overlayScrollbars/js/jquery.overlayScrollbars.min.js"></script>
 <% } %>
+<% if (usePdfExport && !useTables) { %>
+<script src="/plugins/pdfmake/pdfmake.min.js"></script>
+<script src="/plugins/pdfmake/vfs_fonts.js"></script>
+<% } %>
 
 <!-- AdminLTE -->
 <script src="/dist/js/adminlte.min.js"></script>
-<script src="/dist/js/demo.js"></script>
+<% /* AdminLTE's demo.js is deliberately NOT loaded: it is a test-only file
+       that pops the "this file is only created for testing purposes" alert
+       and injects a Customize AdminLTE sidebar the panel does not use. */ %>
 <% if (typeof validation !== 'undefined' && validation) { %>
 <!-- The reference adds this on /add_user alone, last in the stack. Vendored
      rather than pulled from jsdelivr so the panel works offline. -->

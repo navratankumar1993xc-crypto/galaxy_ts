@@ -49,7 +49,7 @@ fi
 
 echo
 echo "=== 1. login + page walk per tier"
-ALL_PAGES="/home /all_user /all_developer_panels /all_super_master_admins /all_master_admins /all_admins /all_super_sellers /all_seller /all_key /transaction /news /reports /payment_history /set_price /token_stats /today_result /top_result /add_user /api/nope"
+ALL_PAGES="/home /all_user /all_developer_panels /all_super_master_admins /all_master_admins /all_admins /all_super_sellers /all_seller /all_key /transaction /news /reports /set_price /token_stats /today_result /top_result /add_user /api/nope"
 
 for who in admin LUCKYDEV LUCKYSUPERMASTER YOGIMASTER TPADM TPSUP YOGISELL; do
   case "$who" in

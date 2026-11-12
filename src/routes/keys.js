@@ -6,6 +6,7 @@ const prices = require('../queries/prices');
 const { subtreeIds } = require('../queries/tree');
 const { boldText, ROLES, inr } = require('../config');
 const { DT_BUTTONS } = require('../pageStyle');
+const { siteBaseUrl, loginUrl, safeHttpUrl } = require('../urls');
 
 // The Add IP label and placeholder are the same string on the reference page.
 const IP_FORMAT_HINT = boldText('Please Input Data Format (000.00.00.00:0000:abcd:abcd123)');
@@ -112,9 +113,10 @@ function list(req, res) {
     assignable: subtreeUsers.map(function (u) {
       return { id: u.id, username: u.username, roleName: (ROLES[u.role] || { label: u.role }).label };
     }),
-    // The transfer picker offers every panel below the controller; the route
-    // refuses the controller itself and the key's current owner.
-    transferTargets: isCtrl ? subtreeUsers.filter(function (u) { return u.role !== 'controller'; }).map(function (u) {
+    // The transfer picker offers only SELLER panels: a whole-account transfer
+    // lands a key in a seller's hands, never in an intermediate tier. The route
+    // refuses the controller, non-sellers and the key's current owner.
+    transferTargets: isCtrl ? subtreeUsers.filter(function (u) { return u.role === 'seller'; }).map(function (u) {
       return { id: u.id, username: u.username, roleName: (ROLES[u.role] || { label: u.role }).label };
     }) : [],
     defaultDays: sellerKeyDays(settings),
@@ -218,12 +220,13 @@ function createGift(req, res) {
     const keyName = keys.generate({
       owner: seller, days, type: 'normal', hasPaid: 1, clientName: 'GIFT KEY', gift: true, name
     });
-    flash(req, 'success', keyName + ' gift key created for ' + seller.username +
-      ' (' + days + ' days, Paid, no charge).');
+    const key = keys.getByName(keyName);
+    return res.redirect('/key_details/' + key.id + '?created=1');
   } catch (err) {
+    if (!/UNIQUE|PRIMARY/i.test(String(err && err.message))) throw err;
     flash(req, 'danger', 'Name ' + name + ' is already taken by another key.');
+    return res.redirect(back(req));
   }
-  res.redirect(back(req));
 }
 
 // -------------------------------------------------------------- transfer_gift
@@ -274,8 +277,10 @@ function transferKey(req, res) {
   if (!key) return res.redirect(back(req));
   const name = String(req.body.target_name || '').trim();
   const target = users.getByUsername(name);
-  if (!target || target.role === 'controller') {
-    flash(req, 'danger', 'No panel named "' + name + '". Pick a panel below the controller.');
+  // A whole-account transfer lands only in a SELLER panel — the picker offers
+  // sellers alone, and a hand-made post naming any other tier is refused here.
+  if (!target || target.role !== 'seller') {
+    flash(req, 'danger', 'No seller panel named "' + name + '". A key transfers only into a seller panel.');
     return res.redirect(back(req));
   }
   if (target.id === key.created_by_id) {
@@ -413,7 +418,7 @@ function markPaid(req, res) {
     : key.key_name + ' is Paid. ' + creator.username + ' now owes ' + inr(bill.amount) +
       ', and every panel above it owes its own parent its own role price (' + bill.chainBilled + ' dues in the chain)' +
       (bill.renewed ? ' (renewal, validity extended)' : '') +
-      ' — each parent accepts on its Due Revised Payment page.');
+      ' — each parent receives it via Receive Payment on its panel list.');
   res.redirect(back(req));
 }
 
@@ -514,11 +519,49 @@ function generate(req, res) {
 
   try {
     const keyName = keys.generate({ owner: target, days, type, mac, name, clientName, hasPaid: 0 });
-    flash(req, 'success', keyName + ' generated for ' + target.username + ' (' + days + ' days, ' + type + ').');
+    const key = keys.getByName(keyName);
+    return res.redirect('/key_details/' + key.id + '?created=1');
   } catch (err) {
+    if (!/UNIQUE|PRIMARY/i.test(String(err && err.message))) throw err;
     flash(req, 'danger', 'Name ' + name + ' is already taken by another key.');
+    return res.redirect('/all_key');
   }
-  res.redirect('/all_key');
+}
+
+function keyDetails(req, res) {
+  const me = res.locals.me;
+  const key = keys.get(req.params.id);
+  if (!key || !keys.owns(me, key.id)) {
+    return res.status(404).render('error', { code: 404, message: 'Key details not found.' });
+  }
+
+  const settings = prices.all();
+  const creator = users.getById(key.created_by_id);
+  res.set('Cache-Control', 'no-store');
+  res.render('tiers/success', {
+    kind: 'key',
+    created: req.query.created === '1',
+    key: {
+      name: key.key_name,
+      websiteUrl: siteBaseUrl(req) + '/login',
+      fields: [
+        { label: 'Key Name', value: key.key_name },
+        { label: 'Client Name', value: key.client_name || '—' },
+        { label: 'Assigned Panel', value: creator ? creator.username : '—' },
+        { label: 'MAC Address', value: key.mac || '—' },
+        { label: 'IP Addresses', value: key.ips || '—' },
+        { label: 'Validity', value: key.days + ' days' },
+        { label: 'Start Date', value: key.start_date },
+        { label: 'Expiry Date', value: key.expire_date },
+        { label: 'Payment Status', value: Number(key.has_paid) ? 'Paid' : 'UnPaid' },
+        { label: 'Key Type', value: key.type },
+        { label: 'Status', value: key.status }
+      ],
+      finalSetupLink: loginUrl(req, key.key_name),
+      setupDownloadLink: safeHttpUrl(settings.setup_link),
+      listUrl: '/all_key'
+    }
+  });
 }
 
 // ---------------------------------------------------------------- status_update
@@ -547,6 +590,6 @@ function statusUpdate(req, res) {
 }
 
 module.exports = {
-  IP_FORMAT_HINT, list, toolbar, generate, extend, editValidity, setSellerDays, createGift, transferGift, transferKey,
+  IP_FORMAT_HINT, list, toolbar, generate, keyDetails, extend, editValidity, setSellerDays, createGift, transferGift, transferKey,
   updateClientName, remove, addProxy, statusUpdate, markPaid, renewKey
 };

@@ -121,6 +121,20 @@
         <button class="copy-btn" id="copyBtn"><%= brand.login.copy %></button>
       </div>
       <div style="margin-top: 10px; font-size: 12px; color: var(--glow-gold); font-weight: 700;" id="demoExpiry"></div>
+      <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted);" id="demoDetails"></div>
+      <label for="demoFinalLink" style="display:block; margin-top:12px;">Final Setup Link</label>
+      <div class="key-display">
+        <input type="text" id="demoFinalLink" readonly>
+        <button class="copy-btn" id="copyFinalLink"><%= brand.login.copy %></button>
+      </div>
+      <label for="demoDownloadLink" style="display:block; margin-top:12px;">Setup Download Link</label>
+      <div class="key-display">
+        <input type="text" id="demoDownloadLink" readonly>
+        <a class="copy-btn" id="downloadSetup" href="#" target="_blank" rel="noopener noreferrer">Download Setup</a>
+        <button class="copy-btn" id="copyDownloadLink"><%= brand.login.copy %></button>
+      </div>
+      <button type="button" class="copy-btn" id="copyAllDemoDetails" style="margin-top:12px;">Copy All Details</button>
+      <div id="demoCopyStatus" role="status" aria-live="polite"></div>
     </div>
 
     <div style="margin-top: 12px; color: #ff80ab; font-size: 13px; font-weight: 600;" id="modalError"></div>
@@ -128,9 +142,11 @@
 </div>
 
 <script>
-// URL clean karo - koi bhi ?err= ya query string URL mein nahi dikhega
+// Remove incidental query parameters but preserve a generated key's setup link.
 if (window.location.search) {
-  window.history.replaceState({}, document.title, window.location.pathname);
+  const key = new URLSearchParams(window.location.search).get('key');
+  window.history.replaceState({}, document.title,
+    window.location.pathname + (key ? '?key=' + encodeURIComponent(key) : ''));
 }
 
 // Password eye hide/show toggle
@@ -190,6 +206,18 @@ async function fetchDemoKey() {
     resultBox.style.display = 'block';
     document.getElementById('demoKeyBox').value = data.key;
     document.getElementById('demoExpiry').textContent = '<%= brand.login.expiry %>' + data.expiry;
+    document.getElementById('demoDetails').textContent =
+      'Start: ' + data.keyDetails.startDate + ' · Validity: ' + data.days + ' days · Type: ' + data.keyDetails.type +
+      ' · MAC: ' + data.keyDetails.mac + ' · IPs: ' + data.keyDetails.ips;
+    document.getElementById('demoFinalLink').value = data.finalSetupLink;
+    document.getElementById('demoDownloadLink').value = data.setupDownloadLink || 'Not configured';
+    const download = document.getElementById('downloadSetup');
+    download.href = data.setupDownloadLink || '#';
+    download.setAttribute('aria-disabled', data.setupDownloadLink ? 'false' : 'true');
+    download.onclick = function (event) {
+      if (!data.setupDownloadLink) event.preventDefault();
+    };
+    document.getElementById('copyDownloadLink').disabled = !data.setupDownloadLink;
   } catch (err) {
     waitBox.style.display = 'none';
     errorBox.textContent = 'Network connection failed. Try again.';
@@ -204,15 +232,53 @@ if (openModalBtn) {
 }
 
 // Clipboard Copy Logic
+async function copyDemoText(text) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+  const field = document.createElement('textarea');
+  field.value = text;
+  field.style.position = 'fixed';
+  field.style.opacity = '0';
+  document.body.appendChild(field);
+  field.select();
+  const copied = document.execCommand('copy');
+  document.body.removeChild(field);
+  if (!copied) throw new Error('Clipboard copy was refused.');
+}
+
+async function copyDemoValue(elementId) {
+  const field = document.getElementById(elementId);
+  const status = document.getElementById('demoCopyStatus');
+  if (!field || !field.value || field.value === 'Not configured') return;
+  try {
+    await copyDemoText(field.value);
+    status.textContent = '<%= brand.login.copied %>';
+  } catch (err) {
+    status.textContent = 'Copy failed. Select and copy the detail manually.';
+  }
+}
+
 const copyBtn = document.getElementById('copyBtn');
 if (copyBtn) {
-  copyBtn.onclick = async function () {
-    const key = document.getElementById('demoKeyBox').value;
-    await navigator.clipboard.writeText(key);
-    this.textContent = '<%= brand.login.copied %>';
-    setTimeout(() => this.textContent = '<%= brand.login.copy %>', 1500);
-  };
+  copyBtn.onclick = function () { copyDemoValue('demoKeyBox'); };
 }
+document.getElementById('copyFinalLink').onclick = function () { copyDemoValue('demoFinalLink'); };
+document.getElementById('copyDownloadLink').onclick = function () { copyDemoValue('demoDownloadLink'); };
+document.getElementById('copyAllDemoDetails').onclick = async function () {
+  const details = document.getElementById('demoDetails').textContent;
+  const expiry = document.getElementById('demoExpiry').textContent;
+  const keyName = document.getElementById('demoKeyBox').value;
+  const finalLink = document.getElementById('demoFinalLink').value;
+  const downloadLink = document.getElementById('demoDownloadLink').value;
+  try {
+    await copyDemoText(['Key Name: ' + keyName, details, expiry,
+      'Final Setup Link: ' + finalLink,
+      'Setup Download Link: ' + downloadLink
+    ].join('\n'));
+    document.getElementById('demoCopyStatus').textContent = '<%= brand.login.copied %>';
+  } catch (err) {
+    document.getElementById('demoCopyStatus').textContent = 'Copy failed. Select and copy the details manually.';
+  }
+};
 </script>
 
 </body>

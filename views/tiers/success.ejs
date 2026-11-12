@@ -1,0 +1,213 @@
+<%- include('../partials/head') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+
+<div class="content-wrapper">
+  <%- include('../partials/pagehead') %>
+  <section class="content">
+    <div class="container-fluid">
+      <div class="dash-card">
+        <div class="dash-card-head">
+          <div class="dash-card-title">
+            <i class="fas fa-circle-check mr-2 text-success"></i>
+            <%= kind === 'panel'
+              ? (created ? 'Account Created Successfully' : 'Panel Login Details')
+              : (created ? 'Key Generated Successfully' : 'Key Details') %>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <div class="alert alert-success font-weight-bold">
+            <i class="fas fa-check-circle mr-1"></i> Success
+          </div>
+
+          <% if (kind === 'panel') { %>
+            <div class="mb-3 text-muted"><%= panel.roleName %> — <strong><%= panel.username %></strong></div>
+            <div class="row">
+              <div class="col-12 col-lg-8">
+                <% if (passwordReset) { %>
+                  <div class="alert alert-success">Password updated. The new password is shown below.</div>
+                <% } %>
+                <div class="form-group">
+                  <label for="detail-0">Panel Website URL</label>
+                  <div class="input-group">
+                    <input id="detail-0" class="form-control copy-value" data-copy-label="Panel Website URL"
+                           type="text" value="<%= panel.websiteUrl %>" readonly>
+                    <div class="input-group-append">
+                      <button type="button" class="btn btn-outline-primary" data-copy="detail-0">Copy URL</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="detail-1">User ID</label>
+                  <div class="input-group">
+                    <input id="detail-1" class="form-control copy-value" data-copy-label="User ID"
+                           type="text" value="<%= panel.username %>" readonly>
+                    <div class="input-group-append">
+                      <button type="button" class="btn btn-outline-primary" data-copy="detail-1">Copy User ID</button>
+                    </div>
+                  </div>
+                </div>
+                <% if (panel.password) { %>
+                  <div class="form-group">
+                    <label for="detail-2">Password</label>
+                    <div class="input-group">
+                      <input id="detail-2" class="form-control copy-value" data-copy-label="Password"
+                             type="password" value="<%= panel.password %>" readonly autocomplete="new-password">
+                      <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-secondary" data-toggle-password="detail-2">Show</button>
+                        <button type="button" class="btn btn-outline-primary" data-copy="detail-2">Copy Password</button>
+                      </div>
+                    </div>
+                  </div>
+                <% } else { %>
+                  <div class="alert alert-warning">The existing password cannot be recovered. Set a new password below; it will be saved securely and shown here.</div>
+                  <form action="/panel_details/<%= panel.id %>/reset-password" method="post" class="mb-4">
+                    <div class="form-group">
+                      <label for="new-panel-password">New password</label>
+                      <input id="new-panel-password" name="new_password" class="form-control"
+                             type="password" required autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn btn-pro">Reset Password and Show</button>
+                  </form>
+                <% } %>
+                <div class="form-group mt-4">
+                  <label for="whatsapp-message">Login message — ready to send</label>
+                  <textarea id="whatsapp-message" class="form-control" rows="5" readonly><%= panel.shareMessage %></textarea>
+                  <div class="d-flex flex-wrap mt-2" style="gap: 8px;">
+                    <button type="button" class="btn btn-success" data-copy="whatsapp-message">
+                      <i class="fas fa-copy mr-1"></i>Copy WhatsApp Message
+                    </button>
+                    <a class="btn btn-outline-success" href="https://wa.me/?text=<%= encodeURIComponent(panel.shareMessage) %>"
+                       target="_blank" rel="noopener noreferrer">
+                      <i class="fab fa-whatsapp mr-1"></i>Send with WhatsApp
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% } else { %>
+            <% if (created) { %>
+              <div class="form-group">
+                <label for="key-share-message">Key Details</label>
+                <textarea id="key-share-message" class="form-control" rows="2" readonly><%= 'Website URL: ' + (key.websiteUrl || key.finalSetupLink.split('?')[0]) + '\nKey name: ' + key.name %></textarea>
+                <div class="d-flex flex-wrap mt-2" style="gap: 8px;">
+                  <a class="btn btn-outline-success" href="https://wa.me/?text=<%= encodeURIComponent('Website URL: ' + (key.websiteUrl || key.finalSetupLink.split('?')[0]) + '\nKey name: ' + key.name) %>"
+                     target="_blank" rel="noopener noreferrer">Send with WhatsApp</a>
+                </div>
+              </div>
+            <% } else { %>
+              <div class="row">
+                <% key.fields.forEach(function (field, index) { %>
+                  <div class="col-12 col-lg-6">
+                    <div class="form-group">
+                      <label for="detail-<%= index %>"><%= field.label %></label>
+                      <div class="input-group">
+                        <input id="detail-<%= index %>" class="form-control copy-value"
+                               data-copy-label="<%= field.label %>" type="text" value="<%= field.value %>" readonly>
+                        <div class="input-group-append">
+                          <button type="button" class="btn btn-outline-primary" data-copy="detail-<%= index %>">Copy</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
+              <div class="col-12 col-lg-6">
+                <div class="form-group">
+                  <label for="detail-final-link">Final Setup Link</label>
+                  <div class="input-group">
+                    <input id="detail-final-link" class="form-control copy-value" data-copy-label="Final Setup Link"
+                           type="text" value="<%= key.finalSetupLink %>" readonly>
+                    <div class="input-group-append">
+                      <button type="button" class="btn btn-outline-primary" data-copy="detail-final-link">Copy Link</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-lg-6">
+                <div class="form-group">
+                  <label for="detail-download-link">Setup Download Link</label>
+                  <% if (key.setupDownloadLink) { %>
+                    <div class="input-group">
+                      <input id="detail-download-link" class="form-control copy-value" data-copy-label="Setup Download Link"
+                             type="text" value="<%= key.setupDownloadLink %>" readonly>
+                      <div class="input-group-append">
+                        <a class="btn btn-success" href="<%= key.setupDownloadLink %>" target="_blank" rel="noopener noreferrer">Download Setup</a>
+                        <button type="button" class="btn btn-outline-primary" data-copy="detail-download-link">Copy Link</button>
+                      </div>
+                    </div>
+                  <% } else { %>
+                    <div class="alert alert-warning mb-0">Setup download link is not configured. Set it in Link Management.</div>
+                  <% } %>
+                </div>
+              </div>
+              </div>
+            <% } %>
+          <% } %>
+
+          <div class="d-flex flex-wrap align-items-center" style="gap: 8px;">
+            <% if (kind === 'key' && created) { %>
+              <button type="button" class="btn btn-primary" data-copy="key-share-message">Copy All Details</button>
+            <% } else { %>
+              <button type="button" class="btn btn-primary" id="copy-all-details">Copy All Details</button>
+            <% } %>
+            <a class="btn btn-success" href="<%= kind === 'panel' ? panel.listUrl : key.listUrl %>">Success</a>
+            <span id="copy-status" role="status" aria-live="polite" class="text-muted"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function () {
+    function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text);
+      }
+      var field = document.createElement('textarea');
+      field.value = text;
+      field.style.position = 'fixed';
+      field.style.opacity = '0';
+      document.body.appendChild(field);
+      field.select();
+      var copied = document.execCommand('copy');
+      document.body.removeChild(field);
+      return copied ? Promise.resolve() : Promise.reject(new Error('Clipboard copy was refused.'));
+    }
+
+    var status = document.getElementById('copy-status');
+    function copy(text) {
+      Promise.resolve().then(function () { return copyText(text); }).then(function () {
+        status.textContent = 'Copied.';
+      }).catch(function () {
+        status.textContent = 'Copy failed. Select and copy the detail manually.';
+      });
+    }
+
+    document.addEventListener('click', function (event) {
+      var button = event.target.closest('button[data-copy]');
+      if (button) {
+        var field = document.getElementById(button.getAttribute('data-copy'));
+        if (field) copy(field.value);
+        return;
+      }
+      button = event.target.closest('button[data-toggle-password]');
+      if (button) {
+        var password = document.getElementById(button.getAttribute('data-toggle-password'));
+        if (password) {
+          password.type = password.type === 'password' ? 'text' : 'password';
+          button.textContent = password.type === 'password' ? 'Show' : 'Hide';
+        }
+        return;
+      }
+      if (event.target.closest('#copy-all-details')) {
+        var details = Array.prototype.map.call(document.querySelectorAll('.copy-value'), function (field) {
+          return field.getAttribute('data-copy-label') + ': ' + field.value;
+        });
+        copy(details.join('\n'));
+      }
+    });
+  })();
+</script>
+<%- include('../partials/foot') %>

@@ -1,0 +1,129 @@
+<%- include('../partials/head') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+
+<div class="content-wrapper">
+  <%- include('../partials/pagehead') %>
+
+  <section class="content">
+    <div class="container-fluid">
+      <%- include('../partials/flash') %>
+
+      <div class="dash-card mb-4">
+        <div class="dash-card-head d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <div class="dash-ico mr-2"><i class="fas fa-sliders-h"></i></div>
+            <div>
+              <div class="dash-title">Pair Limits Control</div>
+              <div class="dash-sub">Har key ke booking pair limits — software /api/limits se yahi values fetch karta hai</div>
+            </div>
+          </div>
+          <a href="/home" class="btn btn-secondary" style="background: #475569 !important; color: #fff !important; border-radius: 8px; font-weight: 700; padding: 8px 18px; font-size: 0.85rem;">
+            <i class="fas fa-sign-out-alt mr-1"></i> Exit Module
+          </a>
+        </div>
+        <div class="dash-card-body">
+          <div class="alert alert-info mb-4" style="background: rgba(59, 130, 246, 0.05); border: 1px solid var(--accent); color: var(--ink); border-radius: 8px; font-weight: 600; font-size: 13.5px; padding: 12px 18px; line-height: 1.6;">
+            <i class="fas fa-info-circle mr-1" style="color: var(--accent);"></i>
+            <b>Total Pair</b> = ek window mein kul pair, <b>App/Super Pair</b> = App/Super login limit, <b>Beta Pair</b> = Beta login limit.
+            &minus; / + se count badhao-ghatao aur <b>Save</b> dabao. Chalti hui software agle fetch (lagbhag 1 minute) par naye limits le legi.
+            Range: <%= MIN %> se <%= MAX %>.
+          </div>
+
+          <% if (!rows.length) { %>
+            <div class="alert alert-warning mb-0" style="border-radius: 8px; font-weight: 600;">
+              <i class="fas fa-exclamation-triangle mr-1"></i> Abhi koi key nahi hai. Pehle /all_key se key generate karo.
+            </div>
+          <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0 align-middle">
+              <thead>
+                <tr>
+                  <th>Key</th>
+                  <th>Client</th>
+                  <th style="width: 90px;">Status</th>
+                  <th style="width: 150px; text-align: center;">Total Pair</th>
+                  <th style="width: 150px; text-align: center;">App/Super Pair</th>
+                  <th style="width: 150px; text-align: center;">Beta Pair</th>
+                  <th style="width: 110px; text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.forEach(function (row) { %>
+                  <tr>
+                    <td><b style="font-size: 14px; color: var(--ink);"><%= row.key_name %></b></td>
+                    <td style="font-weight: 600; color: var(--muted);"><%= row.client_name || '—' %></td>
+                    <td>
+                      <% if (row.status === 'active') { %>
+                        <span class="badge badge-success" style="border-radius: 6px; font-weight: 700;">Active</span>
+                      <% } else { %>
+                        <span class="badge badge-secondary" style="border-radius: 6px; font-weight: 700;">Deactive</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <div class="input-group input-group-sm">
+                        <div class="input-group-prepend">
+                          <button type="button" class="btn btn-outline-danger" onclick="plStep(this, -1)" title="Decrease"><i class="fas fa-minus"></i></button>
+                        </div>
+                        <input type="number" class="form-control text-center" style="font-weight: 800; font-size: 15px;"
+                               name="limit_total" form="plf<%= row.id %>" value="<%= row.limit_total %>" min="<%= MIN %>" max="<%= MAX %>" required>
+                        <div class="input-group-append">
+                          <button type="button" class="btn btn-outline-success" onclick="plStep(this, 1)" title="Increase"><i class="fas fa-plus"></i></button>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="input-group input-group-sm">
+                        <div class="input-group-prepend">
+                          <button type="button" class="btn btn-outline-danger" onclick="plStep(this, -1)" title="Decrease"><i class="fas fa-minus"></i></button>
+                        </div>
+                        <input type="number" class="form-control text-center" style="font-weight: 800; font-size: 15px;"
+                               name="limit_app" form="plf<%= row.id %>" value="<%= row.limit_app %>" min="<%= MIN %>" max="<%= MAX %>" required>
+                        <div class="input-group-append">
+                          <button type="button" class="btn btn-outline-success" onclick="plStep(this, 1)" title="Increase"><i class="fas fa-plus"></i></button>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="input-group input-group-sm">
+                        <div class="input-group-prepend">
+                          <button type="button" class="btn btn-outline-danger" onclick="plStep(this, -1)" title="Decrease"><i class="fas fa-minus"></i></button>
+                        </div>
+                        <input type="number" class="form-control text-center" style="font-weight: 800; font-size: 15px;"
+                               name="limit_beta" form="plf<%= row.id %>" value="<%= row.limit_beta %>" min="<%= MIN %>" max="<%= MAX %>" required>
+                        <div class="input-group-append">
+                          <button type="button" class="btn btn-outline-success" onclick="plStep(this, 1)" title="Increase"><i class="fas fa-plus"></i></button>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="text-center">
+                      <form id="plf<%= row.id %>" method="post" action="/pair_limits">
+                        <input type="hidden" name="key_id" value="<%= row.id %>">
+                        <button type="submit" class="btn btn-pro btn-sm" style="font-weight: 800; border-radius: 6px; padding: 6px 14px;">
+                          <i class="fas fa-save mr-1"></i> Save
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+function plStep(btn, delta) {
+  var input = btn.closest('.input-group').querySelector('input');
+  var min = Number(input.min), max = Number(input.max);
+  var current = Number(input.value);
+  if (!Number.isFinite(current)) current = min;
+  input.value = Math.min(max, Math.max(min, current + delta));
+}
+</script>
+
+<%- include('../partials/foot') %>

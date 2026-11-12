@@ -20,7 +20,7 @@ function page(req, res) {
     n.mine = n.created_by === me.username;
     // The scope badge prints the stored target with underscores replaced,
     // which the badge's uppercase style then renders as "MASTER ADMIN".
-    n.scope = n.target_role.replace(/_/g, ' ');
+    n.scope = news.TARGET_LABEL[n.target_role] || n.target_role.replace(/_/g, ' ');
     return n;
   });
   res.render('tiers/news', { targets, rows });

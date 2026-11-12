@@ -12,7 +12,11 @@
     <!-- Ticker -->
     <div style="flex-grow: 1; margin: 0 10px; overflow: hidden; background: rgba(0,0,0,0.85); border-radius: 6px; border: 1px solid #2e7d32; padding: 0 10px; height: 35px; display: flex; align-items: center; box-shadow: 0 2px 8px rgba(46,125,50,0.2);">
       <marquee behavior="scroll" direction="left" scrollamount="4" style="color: #fff; font-weight: 700; font-size: 14px; line-height: 35px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-        <%= brand.ticker(roleName) %>
+        <% if (typeof tickerNews !== 'undefined' && tickerNews) { %>
+          📢 <%= tickerNews.body %>
+        <% } else { %>
+          <%= brand.ticker(roleName) %>
+        <% } %>
       </marquee>
     </div>
 

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   username      TEXT    NOT NULL UNIQUE,
   password_hash TEXT    NOT NULL,
+  password_encrypted TEXT,
   role          TEXT    NOT NULL CHECK (role IN
                   ('controller','developer','super_master_admin','master_admin',
                    'admin','super_seller','seller')),
@@ -52,6 +53,11 @@ CREATE TABLE IF NOT EXISTS keys (
   -- raised for it and only the controller manages it.
   is_gift                INTEGER NOT NULL DEFAULT 0,
   renew_pending          INTEGER NOT NULL DEFAULT 0,
+  -- Pair limits the client software fetches from /api/limits; the controller
+  -- raises or lowers them per key on /pair_limits.
+  limit_total            INTEGER NOT NULL DEFAULT 2,
+  limit_app              INTEGER NOT NULL DEFAULT 2,
+  limit_beta             INTEGER NOT NULL DEFAULT 1,
   type                   TEXT    NOT NULL DEFAULT 'normal' CHECK (type IN ('normal','demo')),
   status                 TEXT    NOT NULL DEFAULT 'active' CHECK (status IN ('active','deactive')),
   created_at             TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
@@ -78,7 +84,7 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 -- ---------------------------------------------------------------- payments
--- Feeds both /transaction (settled rows) and /payment_history (pending + settled).
+-- Feeds /transaction (the consolidated ledger) and the per-child payment histories.
 -- Two kinds of row share this ledger: 'payment' is money somebody actually
 -- moved, 'due' is the bill a parent opens the moment they mark their child's key
 -- Paid. A Due row carries the key it was raised for, so the child's history can
@@ -154,8 +160,7 @@ CREATE INDEX IF NOT EXISTS idx_resets_key ON key_resets(key_id);
 CREATE TABLE IF NOT EXISTS news (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   body        TEXT    NOT NULL,
-  target_role TEXT    NOT NULL,   -- developer | super_master_admin | master_admin |
-                                  -- admin | super_seller | seller | appnews
+  target_role TEXT    NOT NULL,   -- panel role | appnews | allpanels | personal
   created_by  TEXT    NOT NULL,
   created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
 );
@@ -172,6 +177,22 @@ CREATE TABLE IF NOT EXISTS tokens (
   received_at TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_tokens_ts ON tokens(ts);
+
+-- ---------------------------------------------------------- key token pool
+-- Tokens pushed against a key (POST /api/tokens) and handed to the client
+-- software once (GET /api/tokens). `consumed` marks a token as delivered so the
+-- same token is not handed out twice; the software keeps its own local copy
+-- until the user clears it. type separates the Server-1 (app) and Beta pools.
+CREATE TABLE IF NOT EXISTS key_tokens (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  key_id      INTEGER NOT NULL REFERENCES keys(id) ON DELETE CASCADE,
+  type        TEXT    NOT NULL CHECK (type IN ('app','beta')),
+  token       TEXT    NOT NULL,
+  consumed    INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+  consumed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_key_tokens_pool ON key_tokens(key_id, type, consumed);
 
 -- ---------------------------------------------------------------- tickets
 -- /today_result + /top_result read the day's rows out of this table.

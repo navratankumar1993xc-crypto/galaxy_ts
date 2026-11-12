@@ -20,6 +20,9 @@ const tokenPages = require('./src/routes/tokens');
 const resultPages = require('./src/routes/results');
 const status = require('./src/routes/status');
 const linkPages = require('./src/routes/links');
+const license = require('./src/routes/license');
+const limits = require('./src/routes/limits');
+const keyTokens = require('./src/routes/keyTokens');
 
 // A fresh checkout has no database rows; create the controller and pricing
 // before the first request is served.
@@ -56,6 +59,13 @@ registerPublicRoutes(app);
 
 // The client software posts usage tokens here; no session, like the reference.
 app.post('/api/token', tokenPages.apiToken);
+app.post('/api/license/validate', license.validate);
+app.post('/api/limits', limits.apiLimits);
+// Per-key token pool: push from anywhere, pull once from the client software.
+app.post('/api/tokens', keyTokens.apiPost);
+app.get('/api/tokens', keyTokens.apiGet);
+// Token Manager header: block flag + the APK links the QR codes are built from.
+app.get('/api/appconfig', keyTokens.apiAppConfig);
 
 // Every other page needs a session.
 app.use(function (req, res, next) {
@@ -73,6 +83,8 @@ app.post('/toggle_demo', auth.requireRole('controller'), pages.toggleDemo);
 // much of the tree each one can see.
 app.get('/add_user', userPages.addForm);
 app.post('/add_user', userPages.addSubmit);
+app.get('/panel_details/:id', userPages.panelDetails);
+app.post('/panel_details/:id/reset-password', userPages.resetPanelPassword);
 Object.keys(userPages.LIST_PAGES).forEach(function (route) {
   app.get('/' + route, userPages.list(route));
 });
@@ -91,6 +103,7 @@ app.post('/back_to_controller', userPages.backToController);
 app.get('/all_key', keyPages.list);
 app.post('/all_key', keyPages.toolbar);
 app.post('/generate_key', keyPages.generate);
+app.get('/key_details/:id', keyPages.keyDetails);
 app.post('/extend_id', keyPages.extend);
 // Edit Validity: the controller sets a key's exact days, up or down; the change
 // is logged to the validity history.
@@ -113,7 +126,7 @@ app.post('/renew_key', keyPages.renewKey);
 
 // Money pages, shared by every tier; the subtree decides whose money you see.
 app.get('/transaction', money.transaction);
-app.get('/payment_history', money.paymentHistory);
+app.get('/payment_receiving_history', money.paymentReceivingHistory);
 app.post('/send_payment', money.sendPayment);
 app.post('/accept_payment', money.acceptPayment);
 // One payment's receipt: sender, receiver and the controller only.
@@ -130,6 +143,12 @@ app.get('/reports', reportPages.page);
 // Controller-only: pricing, the token monitor and the ticket results.
 app.get('/set_price', auth.requireRole('controller'), pricePages.page);
 app.post('/set_price', auth.requireRole('controller'), pricePages.save);
+// Per-key pair limits the client software fetches from /api/limits.
+app.get('/pair_limits', auth.requireRole('controller'), limits.page);
+app.post('/pair_limits', auth.requireRole('controller'), limits.save);
+// Per-key token pool: push tokens and watch pending counts.
+app.get('/key_tokens', auth.requireRole('controller'), keyTokens.page);
+app.post('/key_tokens', auth.requireRole('controller'), keyTokens.save);
 // Login-page download links: controller-only, same guard on page and save.
 app.get('/link_management', auth.requireRole('controller'), linkPages.page);
 app.post('/link_management', auth.requireRole('controller'), linkPages.save);
