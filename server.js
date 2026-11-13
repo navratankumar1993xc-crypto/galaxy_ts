@@ -40,6 +40,9 @@ app.set('views', path.join(cfg.ROOT, 'views'));
 app.set('trust proxy', false);
 
 app.use(express.static(path.join(cfg.ROOT, 'public'), { maxAge: '1h' }));
+// Bearer-authenticated uploads use their own bounded parser, before any body
+// or session middleware can consume the request or redirect it to login.
+app.post('/api/results', resultPages.apiResults);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -78,8 +81,11 @@ app.use(function (req, res, next) {
   return auth.requireLogin(req, res, next);
 });
 
-// Ticket scans (data/uploads) are only readable by a signed-in panel.
-app.use('/uploads', express.static(cfg.UPLOAD_DIR, { maxAge: '1h' }));
+// Legacy ticket scans remain available only to the controller, never cached.
+app.use('/uploads', function (req, res, next) {
+  res.set({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+  next();
+}, auth.requireRole('controller'), express.static(cfg.UPLOAD_DIR, { cacheControl: false }));
 
 app.get('/home', pages.home);
 app.post('/toggle_demo', auth.requireRole('controller'), pages.toggleDemo);
@@ -158,6 +164,7 @@ app.post('/key_tokens', auth.requireRole('controller'), keyTokens.save);
 app.get('/link_management', auth.requireRole('controller'), linkPages.page);
 app.post('/link_management', auth.requireRole('controller'), linkPages.save);
 app.get('/token_stats', auth.requireRole('controller'), tokenPages.page);
+app.get('/result_image/:id', auth.requireRole('controller'), resultPages.resultImage);
 app.get('/today_result', auth.requireRole('controller'), resultPages.todayResult);
 app.get('/top_result', auth.requireRole('controller'), resultPages.topResult);
 

@@ -19,12 +19,12 @@ function add(keyId, type, tokenList) {
 }
 
 // Tokens still waiting to be handed to the software, oldest first.
-function pending(keyId, type) {
+function pending(keyId) {
   return store.all(
     `SELECT id, token FROM key_tokens
-      WHERE key_id = ? AND type = ? AND consumed = 0
+      WHERE key_id = ? AND consumed = 0
       ORDER BY id`,
-    [keyId, type]
+    [keyId]
   );
 }
 

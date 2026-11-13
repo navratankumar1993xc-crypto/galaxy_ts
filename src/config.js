@@ -182,6 +182,11 @@ module.exports = {
     ? path.resolve(process.env.GALAXY_DB)
     : path.join(ROOT, 'data', 'galaxy.db'),
   UPLOAD_DIR: path.join(ROOT, 'data', 'uploads'),
+  RESULT_DIR: process.env.GALAXY_RESULT_DIR
+    ? path.resolve(process.env.GALAXY_RESULT_DIR)
+    : path.join(ROOT, 'data', 'results'),
+  // Deliberately independent of SESSION_SECRET: no fallback or generated key.
+  RESULTS_ENCRYPTION_KEY: process.env.RESULTS_ENCRYPTION_KEY || '',
   // The reference stamps its theme stylesheet with a cache-buster query; ours is
   // the file's own mtime, which is what that number is on the original.
   ASSET_VERSION: (() => {

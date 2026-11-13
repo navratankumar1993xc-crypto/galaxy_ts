@@ -25,12 +25,17 @@
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Src Destination</th>
+                  <th>From</th>
+                  <th>To</th>
                   <th>Train</th>
                   <th>Pay Mode</th>
                   <th>MAC ID</th>
-                                    <th>Key ID</th>
-                                  <th>IP Address</th>
+                  <th>Key Name</th>
+                  <th>Booking IP (client-reported)</th>
+                  <th>Post-booking Observation (not actual booking IP)</th>
+                  <th>Connection / Proxy</th>
+                  <th>Evidence</th>
+                  <th>Booking Time (as reported)</th>
                   <th>TDate</th>
                   <th>PNR</th>
                   <th>IMG</th>
@@ -40,19 +45,57 @@
                 <% rows.forEach(function (t) { %>
                   <tr>
                     <td><%= t.id %></td>
-                    <td><%= t.src %> &rarr; <%= t.dest %></td>
-                    <td><%= t.train %></td>
-                    <td><%= t.pay_mode %></td>
-                    <td><%= t.mac %></td>
-                    <td><%= t.key_id %></td>
-                    <td><%= t.ip %></td>
-                    <td><%= t.tdate %></td>
-                    <td><%= t.pnr %></td>
+                    <td><%= t.src || 'Unknown' %></td>
+                    <td><%= t.dest || 'Unknown' %></td>
+                    <td><%= t.train || 'Unknown' %></td>
+                    <td><%= t.pay_mode || 'Unknown' %></td>
+                    <td><%= t.mac || 'Unknown' %></td>
+                    <td><%= t.key_id || 'Unknown' %></td>
                     <td>
-                      <% if (t.img) { %>
-                        <a href="/uploads/<%= t.img %>" target="_blank" rel="noopener">
-                          <img src="/uploads/<%= t.img %>" alt="" style="height: 34px; border-radius: 4px;">
+                      <% if (!t.upload_identity && t.ip) { %>
+                        Legacy IP (source unknown): <%= t.ip %>
+                      <% } else { %>
+                        <%= t.ip || 'Unknown (not reported)' %>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (t.ip_source === 'post_booking_probe') { %>
+                        Post-booking probe: <%= t.observed_ip || 'Unknown' %><br>
+                        Observed at: <%= t.ip_observed_at || 'Unknown' %><br>
+                        <span class="text-muted">Not the actual booking IP.</span>
+                      <% } else { %>
+                        Unknown (no post-booking observation)
+                      <% } %>
+                    </td>
+                    <td>
+                      Connection: <%= t.connection_kind || 'Unknown' %><br>
+                      <% if (t.proxy) { %>
+                        Scheme: <%= t.proxy.scheme %><br>
+                        Host: <%= t.proxy.host %><br>
+                        Port: <%= t.proxy.port %>
+                        <details>
+                          <summary>Full proxy credentials (controller only)</summary>
+                          <div style="white-space: pre-wrap; overflow-wrap: anywhere;">Username: <%= t.proxy.username || '(empty)' %></div>
+                          <div style="white-space: pre-wrap; overflow-wrap: anywhere;">Password: <%= t.proxy.password || '(empty)' %></div>
+                          <div style="white-space: pre-wrap; overflow-wrap: anywhere;">Domain: <%= t.proxy.domain || '(empty)' %></div>
+                        </details>
+                      <% } else { %>
+                        Proxy: <%= t.proxyUnavailable ? 'Unavailable (could not decrypt)' : (t.connection_kind === 'direct' ? 'None (direct connection)' : 'Unknown') %>
+                      <% } %>
+                    </td>
+                    <td><%= t.evidence || 'Unknown (legacy record)' %></td>
+                    <td><%= t.booking_time || 'Unknown (legacy record)' %></td>
+                    <td><%= t.tdate || 'Unknown' %></td>
+                    <td><%= t.pnr || 'Unknown' %></td>
+                    <td>
+                      <% if (t.image_file || t.img) {
+                        const imageUrl = t.image_file ? '/result_image/' + t.id : '/uploads/' + encodeURIComponent(t.img);
+                      %>
+                        <a href="<%= imageUrl %>" target="_blank" rel="noopener">
+                          <img src="<%= imageUrl %>" alt="Ticket <%= t.id %>" style="height: 34px; border-radius: 4px;">
                         </a>
+                      <% } else { %>
+                        Not available
                       <% } %>
                     </td>
                   </tr>

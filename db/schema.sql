@@ -207,6 +207,19 @@ CREATE TABLE IF NOT EXISTS tickets3 (
   ip     TEXT NOT NULL DEFAULT '',
   pnr    TEXT NOT NULL DEFAULT '',
   img    TEXT NOT NULL DEFAULT '',
-  tdate  TEXT NOT NULL DEFAULT (date('now','localtime'))
+  tdate  TEXT NOT NULL DEFAULT (date('now','localtime')),
+  upload_identity TEXT,
+  result_id TEXT,
+  booking_time TEXT,
+  uploaded_at TEXT,
+  evidence TEXT,
+  connection_kind TEXT,
+  proxy_encrypted BLOB,
+  observed_ip TEXT,
+  ip_observed_at TEXT,
+  ip_source TEXT,
+  image_file TEXT,
+  image_mime TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_tickets_tdate ON tickets3(tdate);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_upload_identity ON tickets3(upload_identity);

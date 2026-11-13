@@ -71,8 +71,7 @@ function apiGet(req, res) {
   if (key.status !== 'active') {
     return res.json({ success: false, message: 'Your License is BLOCKED from fetching Tokens.', tokens: [], sensors: [], timestamp, userId });
   }
-  const type = normType(req.query.type) || 'app';
-  const rows = keyTokens.pending(key.id, type);
+  const rows = keyTokens.pending(key.id);
   keyTokens.consume(rows.map(r => r.id));
   const tokens = rows.map(r => r.token);
   res.json({ success: true, message: '', tokens, sensors: tokens, timestamp, userId });
@@ -81,7 +80,7 @@ function apiGet(req, res) {
 // ------------------------------------------- POST /api/akamai/sensor/:keyname
 // APK pushes sensors against a key. keyname comes from the path; NO mac needed
 // on POST. Body { sensors:[...], timestamp, ... } (legacy tokens also accepted).
-// Same endpoint for app and beta — type selects the pool, defaults to 'app'.
+// Type is an upload label only; either software button can fetch these tokens.
 function sensorPost(req, res) {
   const key = findKey(req.params.keyname);
   if (!key) return res.status(404).json({ ok: false, msg: 'Unknown key.' });
@@ -95,11 +94,7 @@ function sensorPost(req, res) {
 }
 
 // -------------------------------------------- GET /api/akamai/sensor/:keyname
-// Software pulls its pending tokens once (then they are marked consumed).
-// mac_address MUST match the key's registered MAC (keys.mac, set at license
-// validation); a mismatch or missing mac is an error. Same endpoint for app and
-// beta — type selects the pool. Response carries the software shape
-// { success, message, tokens } plus the APK fields { sensors, timestamp, userId }.
+// The button selects the local file; stored type labels must not restrict delivery.
 function sensorGet(req, res) {
   const key = findKey(req.params.keyname);
   const userId = key ? key.key_name : '';
@@ -111,8 +106,7 @@ function sensorGet(req, res) {
   if (!mac) return fail('mac_address is required.');
   if (!key.mac) return fail('No MAC address registered for this key.');
   if (key.mac !== mac) return fail('MAC address does not match this key.');
-  const type = normType(req.query.type) || 'app';
-  const rows = keyTokens.pending(key.id, type);
+  const rows = keyTokens.pending(key.id);
   keyTokens.consume(rows.map(r => r.id));
   const tokens = rows.map(r => r.token);
   res.json({ success: true, message: '', tokens, sensors: tokens, timestamp, userId });

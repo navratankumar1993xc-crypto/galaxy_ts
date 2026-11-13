@@ -22,15 +22,14 @@
         <div class="dash-card-body">
           <div class="row" style="gap:10px; margin: 20px;"> <!-- gap set to 10px -->
             <% if (images.length) { %>
-              <% images.forEach(function (t) { %>
+              <% images.forEach(function (t) {
+                const imageUrl = t.image_file ? '/result_image/' + t.id : '/uploads/' + encodeURIComponent(t.img);
+              %>
                 <div class="col-6 col-md-3 mb-3">
-                  <a href="/uploads/<%= t.img %>" target="_blank" rel="noopener">
-                    <img src="/uploads/<%= t.img %>" alt="Ticket <%= t.id %>"
+                  <a href="<%= imageUrl %>" target="_blank" rel="noopener">
+                    <img src="<%= imageUrl %>" alt="Ticket <%= t.id %>"
                          style="width: 100%; border-radius: 10px; border: 1px solid var(--line);">
                   </a>
-                  <div class="text-muted" style="font-size: 12px; margin-top: 6px;">
-                    #<%= t.id %> &mdash; <%= t.pnr %>
-                  </div>
                 </div>
               <% }) %>
             <% } else { %>

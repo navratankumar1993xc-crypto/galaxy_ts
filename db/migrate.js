@@ -173,6 +173,31 @@ function upgrade(db) {
     }
   }
 
+  // Booking results upgrade in place; NULL identity keeps all legacy rows valid.
+  if (hasTable(db, 'tickets3')) {
+    const have = columns(db, 'tickets3');
+    const additions = {
+      upload_identity: 'TEXT', result_id: 'TEXT', booking_time: 'TEXT', uploaded_at: 'TEXT',
+      evidence: 'TEXT', connection_kind: 'TEXT', proxy_encrypted: 'BLOB',
+      observed_ip: 'TEXT', ip_observed_at: 'TEXT', ip_source: 'TEXT',
+      image_file: 'TEXT', image_mime: 'TEXT'
+    };
+    db.exec('BEGIN');
+    try {
+      for (const [name, type] of Object.entries(additions)) {
+        if (!have.includes(name)) {
+          db.exec('ALTER TABLE tickets3 ADD COLUMN ' + name + ' ' + type);
+          done.push('tickets3.' + name + ' added');
+        }
+      }
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_upload_identity ON tickets3(upload_identity)');
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+  }
+
   return done;
 }
 

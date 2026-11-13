@@ -26,13 +26,16 @@ const SUITES = [
   'check_money.js',
   'check_pages.js',
   'check_directlogin.js',
-  'check_license.js'
+  'check_license.js',
+  'check_results.js'
 ];
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'galaxy-check-'));
 let server = null;
 const env = Object.assign({}, process.env, {
   GALAXY_DB: path.join(tmp, 'check.db'),
+  GALAXY_RESULT_DIR: path.join(tmp, 'results'),
+  RESULTS_ENCRYPTION_KEY: require('crypto').randomBytes(32).toString('base64'),
   PORT: String(PORT),
   GALAXY_BASE: BASE
 });

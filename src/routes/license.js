@@ -2,6 +2,7 @@
 const prices = require('../queries/prices');
 const keys = require('../queries/keys');
 const news = require('../queries/news');
+const resultCrypto = require('../resultCrypto');
 
 const EMPTY_FIELDS = {
   appVersion: '',
@@ -41,7 +42,7 @@ function authorized(req, keyName) {
     suppliedKey === keyName;
 }
 
-function reply(res, success, message, key = null) {
+function reply(res, success, message, key = null, mac = key ? key.mac : '') {
   // Fetch latest app news to show in software popup
   let shortMsg = '';
   try {
@@ -55,7 +56,7 @@ function reply(res, success, message, key = null) {
   }
 
   res.set('Cache-Control', 'no-store');
-  return res.json(Object.assign({}, EMPTY_FIELDS, {
+  const payload = Object.assign({}, EMPTY_FIELDS, {
     success,
     message,
     leftDays: key ? Number(key.left_days) : 0,
@@ -63,7 +64,12 @@ function reply(res, success, message, key = null) {
     KeyType: key ? (key.type === 'demo' ? 'demo' : 'normal') : '',
     paid: key ? (Number(key.has_paid) ? 'Paid' : 'Unpaid') : '',
     ShortMessage: shortMsg
-  }));
+  });
+  if (success && key) {
+    const token = resultCrypto.issueToken(key, mac);
+    if (token) payload.resultUploadToken = token;
+  }
+  return res.json(payload);
 }
 
 function validate(req, res) {
@@ -91,7 +97,7 @@ function validate(req, res) {
   }
   if (!key.mac) keys.setMac(key.id, mac);
 
-  return reply(res, true, 'License valid.', key);
+  return reply(res, true, 'License valid.', key, mac);
 }
 
 module.exports = { validate };
